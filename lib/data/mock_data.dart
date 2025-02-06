@@ -4,27 +4,21 @@ import 'package:ethio_trading_app/models/user_profile.dart';
 
 List<Asset> generateMockAssets() {
   final random = Random();
-  final List<Asset> assets = [];
-  for (int i = 0; i < 10; i++) {
+  return List.generate(10, (index) {
     final double price = 100 + random.nextDouble() * 900;
     final double change = (random.nextDouble() - 0.5) * 10;
-    assets.add(
-      Asset(
-        name: 'Asset ${i + 1}',
-        symbol: 'A${i + 1}',
-        price: double.parse(price.toStringAsFixed(2)),
-        change: double.parse(change.toStringAsFixed(2)),
-      ),
-    );
-  }
-  return assets;
+    final int volume = random.nextInt(10000) + 1000;
+
+      return Asset(
+          name: 'Asset ${index + 1}',
+          symbol: 'A${index + 1}',
+          price: price,
+          change: change,
+          volume: volume,
+      );
+    });
 }
 
 UserProfile generateMockUserProfile() {
-  return UserProfile(
-    userId: 'user123',
-    username: 'EthioTrader',
-    email: 'ethiotrader@example.com',
-    profilePictureUrl: 'https://example.com/profile.jpg',
-  );
+    return UserProfile(userId: 'user123', username: 'EthioTrader', email: 'ethiotrader@example.com', profilePictureUrl: 'https://example.com/profile.jpg');
 }

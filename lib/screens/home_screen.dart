@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../models/asset.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class HomeScreen extends StatefulWidget {
+  final ValueChanged<ThemeMode> onThemeChanged;
 
+  const HomeScreen({super.key, required this.onThemeChanged});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+class _HomeScreenState extends State<HomeScreen>{
   @override
   Widget build(BuildContext context) {
     final List<Asset> assets = generateMockAssets();

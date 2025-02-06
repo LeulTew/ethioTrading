@@ -1,45 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:ethio_trading_app/screens/home_screen.dart';
-import 'package:ethio_trading_app/screens/market_screen.dart';
-import 'package:ethio_trading_app/screens/portfolio_screen.dart';
-import 'package:ethio_trading_app/screens/profile_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // Ensure this file exists.
+import 'screens/home_screen.dart';
+import 'screens/market_screen.dart';
+import 'screens/portfolio_screen.dart';
+import 'screens/profile_screen.dart';
+import 'theme/app_theme.dart';
 
-
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {    
+  MyAppState createState() => MyAppState(); // Removed underscore
+}
+
+class MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void _toggleTheme(ThemeMode themeMode) {
+    setState(() {
+      _themeMode = themeMode;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Ethio Trading App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const MainScreen(),
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
+      themeMode: _themeMode,
+      home: MainScreen(
+          onThemeChanged: _toggleTheme), // Ensure `onThemeChanged` is passed
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  final ValueChanged<ThemeMode> onThemeChanged;
+  const MainScreen({super.key, required this.onThemeChanged});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  MainScreenState createState() => MainScreenState(); // Removed underscore
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final List<Widget> _screens = [
-    const HomeScreen(), 
-    const MarketScreen(),
-    const PortfolioScreen(),
-    const ProfileScreen(),
-  ];
+
+  List<Widget> get _screens => [
+        const HomeScreen(),
+        const MarketScreen(),
+        const PortfolioScreen(),
+        ProfileScreen(
+            onThemeChanged: widget.onThemeChanged), // Ensure it's passed
+      ];
 
   void _onItemTapped(int index) {
     setState(() {
