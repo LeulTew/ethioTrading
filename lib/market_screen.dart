@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 
 class MarketScreen extends StatelessWidget {
-  const MarketScreen({Key? key}) : super(key: key);
+  const MarketScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final assets = getMockAssets();
+    final assets = generateMockAssets();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Market'),
