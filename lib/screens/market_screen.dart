@@ -7,28 +7,29 @@ class MarketScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assets = generateMockAssets();
-    return ListView.builder(
-      itemCount: assets.length,
-      itemBuilder: (context, index) {
-        final asset = assets[index];
-        return ListTile(
-          title: Text(asset.name),
-          subtitle: Text(asset.symbol),
-          trailing: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('\$${asset.price.toStringAsFixed(2)}'),
-              Text(
-                '${asset.change.toStringAsFixed(2)}%',
-                style: TextStyle(
-                  color: asset.change >= 0 ? Colors.green : Colors.red,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Market'),
+      ),
+      body: ListView.builder(
+        itemCount: assets.length,
+        itemBuilder: (context, index) {
+          final asset = assets[index];
+          return ListTile(
+            title: Text(asset.name),
+            subtitle: Text(asset.symbol),
+            trailing: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('\$${asset.price.toStringAsFixed(2)}'),
+                Text(
+                  '${asset.change.toStringAsFixed(2)}%',
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
