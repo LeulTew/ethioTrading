@@ -13,8 +13,8 @@ List<Asset> generateMockAssets() {
           name: 'Asset ${index + 1}',
           symbol: 'A${index + 1}',
           price: price,
-          change: change,
-          volume: volume,
+          change: change,  
+          volume: volume.toDouble(),
       );
     });
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ethio_trading_app/data/ethio_data.dart';
+import 'package:ethio_trading_app/data/ethio_data.dart'; // add import
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -9,35 +9,34 @@ class MarketScreen extends StatefulWidget {
 }
 
 class _MarketScreenState extends State<MarketScreen> {
-    List<EthioMarketData> ethioMarketData = [];
+    List<Map<String, dynamic>> ethioMarketData = [];
 
       @override
       void initState() {
         super.initState();
-        ethioMarketData = generateMockEthioMarketData();
+        ethioMarketData = EthioData.generateMockEthioMarketData(); // import ethio_data to use EthioData.
       }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Market'),
-      ),
+        title: const Text('Market'), ),
+        
       body: ListView.builder(
         itemCount: ethioMarketData.length,
         itemBuilder: (context, index) {
           final data = ethioMarketData[index];
+          // access data using data['name'] and data['symbol']
           return ListTile(
-            title: Text(data.name),
-            subtitle: Text(data.symbol),
-            trailing: Column(
+            title: Text(data['name']), // access data using data['name']
+            subtitle: Text(data['symbol']), // access data using data['symbol']
+            trailing: Column( // remove duplicate title and subtitle parameters.
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('\$${data.price.toStringAsFixed(2)}'),
-                Text(
-                  '${data.change.toStringAsFixed(2)}%',
-                ),
-              ],
+                Text('\$${data['price'].toStringAsFixed(2)}'),
+                Text('${data['change'].toStringAsFixed(2)}%'),
+              ],          
             ),
           );
         },

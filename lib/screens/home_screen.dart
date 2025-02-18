@@ -3,10 +3,9 @@ import '../data/mock_data.dart';
 import '../models/asset.dart';
 
 class HomeScreen extends StatefulWidget {
-  final ValueChanged<ThemeMode> onThemeChanged;
 
-  const HomeScreen({super.key, required this.onThemeChanged});
-  @override
+  const HomeScreen({super.key});
+    @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 class _HomeScreenState extends State<HomeScreen>{

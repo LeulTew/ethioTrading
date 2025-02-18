@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // Ensure this file exists.
 import 'screens/home_screen.dart';
-import 'screens/market_screen.dart';
+import 'screens/market_screen.dart'; 
 import 'screens/portfolio_screen.dart';
 import 'screens/profile_screen.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+   await Firebase.initializeApp();
+  
+  
   runApp(const MyApp());
-}
+  }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -24,11 +23,10 @@ class MyApp extends StatefulWidget {
 
 class MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
-
   void _toggleTheme(ThemeMode themeMode) {
     setState(() {
-      _themeMode = themeMode;
-    });
+     _themeMode = themeMode;
+      });
   }
 
   @override
@@ -39,11 +37,11 @@ class MyAppState extends State<MyApp> {
       darkTheme: AppTheme.darkTheme(),
       themeMode: _themeMode,
       home: MainScreen(
-          onThemeChanged: _toggleTheme), // Ensure `onThemeChanged` is passed
+          onThemeChanged: _toggleTheme,
+        ),
     );
   }
 }
-
 class MainScreen extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
   const MainScreen({super.key, required this.onThemeChanged});
@@ -52,26 +50,25 @@ class MainScreen extends StatefulWidget {
   MainScreenState createState() => MainScreenState(); // Removed underscore
 }
 
-class MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+class MainScreenState extends State<MainScreen> {  
+    int _selectedIndex = 0;
 
-  List<Widget> get _screens => [
-        const HomeScreen(),
-        const MarketScreen(),
+  List<Widget> get _screens => [     
+        const HomeScreen(),    
+        const MarketScreen(),   
         const PortfolioScreen(),
-        ProfileScreen(
-            onThemeChanged: widget.onThemeChanged), // Ensure it's passed
-      ];
+         ProfileScreen(onThemeChanged: widget.onThemeChanged)
+     ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+     setState(() {
+        _selectedIndex = index;
+     });
+    }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+     return Scaffold(
       appBar: AppBar(
         title: const Text('Ethio Trading App'),
       ),
@@ -99,7 +96,7 @@ class MainScreenState extends State<MainScreen> {
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-      ),
+       ),
     );
   }
 }
