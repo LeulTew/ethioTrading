@@ -1,6 +1,6 @@
 /// AppTheme: Custom theming configuration for the Trading App.
 /// This file defines both light and dark themes used throughout the application.
-library app_theme;
+library;
 
 import 'package:flutter/material.dart';
 
