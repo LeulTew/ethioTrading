@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "344916949987",
-    "project_id": "ethio-tradding-app",
-    "storage_bucket": "ethio-tradding-app.firebasestorage.app"
+    "project_number": "1037800105398",
+    "project_id": "ethio-tradding-app-9af0d",
+    "storage_bucket": "ethio-tradding-app-9af0d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:344916949987:android:917ec6e744688474a4fed6",
+        "mobilesdk_app_id": "1:1037800105398:android:1c4141dd7dcb6140794d17",
         "android_client_info": {
-          "package_name": "com.ethiotrading.app"
+          "package_name": "com.ethio.trading"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDfwFYAXTyR9KVEG_Ur7Z17LSgELjbEwmw"
+          "current_key": "AIzaSyBNFEuAXc0q6qY0glFpfHuFIOJqSlrrucI"
         }
       ],
       "services": {

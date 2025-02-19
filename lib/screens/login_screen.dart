@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isLogin = true;
+  bool _obscurePassword = true;
 
   void _showForgotPasswordDialog() {
     final forgotEmailController = TextEditingController();
@@ -23,22 +25,22 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('የይለፍ ቃል እረሱ?'),
+        title: const Text('Reset Password'),
         content: Form(
           key: forgotFormKey,
           child: TextFormField(
             controller: forgotEmailController,
             decoration: const InputDecoration(
-              labelText: 'ኢሜይል',
+              labelText: 'Email',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'እባክዎ ኢሜይልዎን ያስገቡ';
+                return 'Please enter your email';
               }
               if (!value.contains('@')) {
-                return 'እባክዎ ትክክለኛ ኢሜይል ያስገቡ';
+                return 'Please enter a valid email';
               }
               return null;
             },
@@ -47,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ተመለስ'),
+            child: const Text('Back'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -60,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('የይለፍ ቃል ማስተካከያ ወደ ኢሜይልዎ ተልኳል'),
+                      content: Text(
+                          'Password reset instructions sent to your email'),
                     ),
                   );
                 } catch (e) {
@@ -71,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
               }
             },
-            child: const Text('ላክ'),
+            child: const Text('Send Reset Link'),
           ),
         ],
       ),
@@ -95,9 +98,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 _emailController.text.split('@')[0],
               );
         }
-
-        if (!mounted) return;
-        Navigator.of(context).pushReplacementNamed('/home');
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'የኢትዮጵያ የግብይት መተግበሪያ',
+                    'Ethiopian Trading App',
                     style: theme.textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -135,17 +135,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      labelText: 'ኢሜይል',
+                      labelText: 'Email',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'እባክዎ ኢሜይልዎን ያስገቡ';
+                        return 'Please enter your email';
                       }
                       if (!value.contains('@')) {
-                        return 'እባክዎ ትክክለኛ ኢሜይል ያስገቡ';
+                        return 'Please enter a valid email';
                       }
                       return null;
                     },
@@ -153,41 +153,51 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'የይለፍ ቃል',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'እባክዎ የይለፍ ቃልዎን ያስገቡ';
-                      }
-                      if (value.length < 6) {
-                        return 'የይለፍ ቃሉ ቢያንስ 6 ፊደላት መሆን አለበት';
-                      }
-                      return null;
-                    },
+                    obscureText: _obscurePassword,
+                    validator: PasswordValidator.validate,
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : Text(_isLogin ? 'ግባ' : 'ተመዝገብ'),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(_isLogin ? 'Login' : 'Register'),
                   ),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => setState(() => _isLogin = !_isLogin),
                     child: Text(
-                      _isLogin ? 'አዲስ ተጠቃሚ ነዎት? ተመዝገቡ' : 'አባል ነዎት? ይግቡ',
+                      _isLogin
+                          ? 'New user? Register here'
+                          : 'Already have an account? Login',
                     ),
                   ),
                   if (_isLogin) ...[
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: _showForgotPasswordDialog,
-                      child: const Text('የይለፍ ቃልዎን ረሱት?'),
+                      child: const Text('Forgot Password?'),
                     ),
                   ],
                 ],
@@ -197,5 +207,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }

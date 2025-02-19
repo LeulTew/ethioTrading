@@ -19,10 +19,11 @@ class AuthService {
   Future<UserCredential> signInWithEmailAndPassword(
       String email, String password) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      return credential;
     } catch (e) {
       throw _handleAuthError(e);
     }
@@ -30,29 +31,26 @@ class AuthService {
 
   // Register with email and password
   Future<UserCredential> registerWithEmailAndPassword(
-    String email,
-    String password,
-    String username,
-  ) async {
+      String email, String password, String username) async {
     try {
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // Create user with email and password
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       // Create user profile in Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+      await _firestore.collection('users').doc(credential.user!.uid).set({
         'username': username,
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'preferences': {
+          'language': 'en', // Default language setting
           'theme': 'system',
-          'language': 'am', // Amharic by default
-          'notifications': true,
         },
       });
 
-      return userCredential;
+      return credential;
     } catch (e) {
       throw _handleAuthError(e);
     }
@@ -64,17 +62,17 @@ class AuthService {
   }
 
   // Update user profile
-  Future<void> updateUserProfile(
-      String userId, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(userId).update(data);
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    await _firestore.collection('users').doc(uid).update(data);
   }
 
   // Update user preferences
   Future<void> updateUserPreferences(
-      String userId, Map<String, dynamic> preferences) async {
-    await _firestore.collection('users').doc(userId).update({
-      'preferences': preferences,
-    });
+      String uid, Map<String, dynamic> preferences) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .update({'preferences': preferences});
   }
 
   // Password reset
@@ -90,21 +88,23 @@ class AuthService {
   String _handleAuthError(dynamic e) {
     if (e is FirebaseAuthException) {
       switch (e.code) {
-        case 'user-not-found':
-          return 'ተጠቃሚው አልተገኘም'; // User not found
-        case 'wrong-password':
-          return 'የተሳሳተ የይለፍ ቃል'; // Wrong password
-        case 'email-already-in-use':
-          return 'ኢሜይል አድራሻው ቀድሞ ጥቅም ላይ ውሏል'; // Email already in use
         case 'weak-password':
-          return 'ደካማ የይለፍ ቃል'; // Weak password
+          return 'The password provided is too weak.';
+        case 'email-already-in-use':
+          return 'An account already exists for that email.';
         case 'invalid-email':
-          return 'ልክ ያልሆነ ኢሜይል አድራሻ'; // Invalid email
+          return 'The email address is not valid.';
+        case 'user-disabled':
+          return 'This user has been disabled.';
+        case 'user-not-found':
+          return 'No user found for that email.';
+        case 'wrong-password':
+          return 'Wrong password provided.';
         default:
-          return 'የተሳሳተ ግብዓት'; // Error occurred
+          return 'Authentication error: ${e.message}';
       }
     }
-    return 'አንድ ስህተት ተከስቷል'; // An error occurred
+    return 'An error occurred: $e';
   }
 
   // Stream of auth state changes

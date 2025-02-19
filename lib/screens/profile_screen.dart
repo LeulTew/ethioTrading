@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ethio_trading_app/models/user_profile.dart';
 import 'package:ethio_trading_app/data/mock_data.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 // ProfileScreen is a StatefulWidget that displays and allows the user to edit their profile information.
 class ProfileScreen extends StatefulWidget {
@@ -55,7 +57,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _saveChanges() {
     setState(() {
-      userProfile = UserProfile(userId: userProfile.userId, username: newUserProfile.username, email: newUserProfile.email, profilePictureUrl: userProfile.profilePictureUrl);
+      userProfile = UserProfile(
+          userId: userProfile.userId,
+          username: newUserProfile.username,
+          email: newUserProfile.email,
+          profilePictureUrl: userProfile.profilePictureUrl);
       // Update the username controller text.
       _usernameController.text = newUserProfile.username;
       // Update the email controller text.
@@ -71,9 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // This method is called whenever the widget needs to rebuild.
   @override
   Widget build(BuildContext context) {
+    final languageProvider = context.watch<LanguageProvider>();
+
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Profile'),
+          title: Text(languageProvider.translate('profile')),
         ),
         body: Padding(
           // Add padding to the body.
@@ -100,7 +108,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Update the user profile when the username changes.
                 onChanged: (value) {
                   setState(() {
-                    newUserProfile = UserProfile(userId: newUserProfile.userId, username: value, email: newUserProfile.email, profilePictureUrl: newUserProfile.profilePictureUrl);
+                    newUserProfile = UserProfile(
+                        userId: newUserProfile.userId,
+                        username: value,
+                        email: newUserProfile.email,
+                        profilePictureUrl: newUserProfile.profilePictureUrl);
                   });
                 },
               ),
@@ -118,7 +130,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Update the user profile when the email changes.
                 onChanged: (value) {
                   setState(() {
-                    newUserProfile = UserProfile(userId: newUserProfile.userId, username: newUserProfile.username, email: value, profilePictureUrl: newUserProfile.profilePictureUrl);
+                    newUserProfile = UserProfile(
+                        userId: newUserProfile.userId,
+                        username: newUserProfile.username,
+                        email: value,
+                        profilePictureUrl: newUserProfile.profilePictureUrl);
                   });
                 },
               ),
@@ -130,7 +146,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: _saveChanges,
                 child: const Text('Save Changes'),
               ),
-              // Add spacing between the save changes button and the theme change buttons.
+              // Add spacing between the save changes button and the language selection.
+              const SizedBox(height: 20),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        languageProvider.translate('language'),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      RadioListTile<String>(
+                        title: const Text('English'),
+                        value: 'en',
+                        groupValue: languageProvider.currentLanguage,
+                        onChanged: (value) {
+                          if (value != null) {
+                            languageProvider.setLanguage(value);
+                          }
+                        },
+                      ),
+                      RadioListTile<String>(
+                        title: const Text('አማርኛ'),
+                        value: 'am',
+                        groupValue: languageProvider.currentLanguage,
+                        onChanged: (value) {
+                          if (value != null) {
+                            languageProvider.setLanguage(value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Add spacing between the language selection and the theme change buttons.
               const SizedBox(height: 20),
               // Theme change buttons
               ElevatedButton(

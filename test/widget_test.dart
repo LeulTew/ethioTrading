@@ -1,19 +1,35 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ethio_trading_app/main.dart';
+import 'package:ethio_trading_app/providers/auth_provider.dart';
+import 'package:ethio_trading_app/providers/language_provider.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    expect(find.text('test'), findsOneWidget);
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await Firebase.initializeApp();
+  });
+
+  testWidgets('App should render properly', (WidgetTester tester) async {
+    final analytics = FirebaseAnalytics.instance;
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
+        ],
+        child: MyApp(analytics: analytics),
+      ),
+    );
+
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

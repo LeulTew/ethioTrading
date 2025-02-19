@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_options_web.dart' if (dart.library.io) 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/portfolio_screen.dart';
@@ -8,21 +11,48 @@ import 'screens/profile_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/language_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  final prefs = await SharedPreferences.getInstance();
+  // Set default language to English if not set
+  if (!prefs.containsKey('language')) {
+    await prefs.setString('language', 'en');
+  }
+
+  await Firebase.initializeApp(
+    options: FirebaseOptions(
+      apiKey: FirebaseOptionsWeb.firebaseConfig['apiKey']!,
+      authDomain: FirebaseOptionsWeb.firebaseConfig['authDomain']!,
+      projectId: FirebaseOptionsWeb.firebaseConfig['projectId']!,
+      storageBucket: FirebaseOptionsWeb.firebaseConfig['storageBucket']!,
+      messagingSenderId:
+          FirebaseOptionsWeb.firebaseConfig['messagingSenderId']!,
+      appId: FirebaseOptionsWeb.firebaseConfig['appId']!,
+      measurementId: FirebaseOptionsWeb.firebaseConfig['measurementId']!,
+    ),
+  );
+
+  // Initialize Analytics
+  final analytics = FirebaseAnalytics.instance;
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
-      child: const MyApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
+      ],
+      child: MyApp(analytics: analytics),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final FirebaseAnalytics analytics;
+
+  const MyApp({super.key, required this.analytics});
 
   @override
   MyAppState createState() => MyAppState();
@@ -40,16 +70,18 @@ class MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ethio Trading App',
+      title: 'Ethiopian Trading App',
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: _themeMode,
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: widget.analytics),
+      ],
       home: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
-          if (authProvider.isAuthenticated) {
-            return MainScreen(onThemeChanged: _toggleTheme);
-          }
-          return const LoginScreen();
+          return authProvider.isAuthenticated
+              ? MainScreen(onThemeChanged: _toggleTheme)
+              : const LoginScreen();
         },
       ),
     );
@@ -68,48 +100,58 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  List<Widget> get _screens => [
-        const HomeScreen(),
-        const MarketScreen(),
-        const PortfolioScreen(),
-        ProfileScreen(onThemeChanged: widget.onThemeChanged)
-      ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: _buildScreen(),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'መነሻ', // Home in Amharic
+            icon: const Icon(Icons.home),
+            label: languageProvider.translate('home'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.trending_up),
-            label: 'ገበያ', // Market in Amharic
+            icon: const Icon(Icons.trending_up),
+            label: languageProvider.translate('market'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'ፖርትፎሊዮ', // Portfolio in Amharic
+            icon: const Icon(Icons.account_balance_wallet),
+            label: languageProvider.translate('portfolio'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'መገለጫ', // Profile in Amharic
+            icon: const Icon(Icons.person),
+            label: languageProvider.translate('profile'),
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
       ),
     );
+  }
+
+  Widget _buildScreen() {
+    switch (_selectedIndex) {
+      case 0:
+        return const HomeScreen();
+      case 1:
+        return const MarketScreen();
+      case 2:
+        return const PortfolioScreen();
+      case 3:
+        return ProfileScreen(onThemeChanged: widget.onThemeChanged);
+      default:
+        return const HomeScreen();
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 }
