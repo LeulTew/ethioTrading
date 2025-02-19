@@ -6,37 +6,128 @@ class EthioData {
   static List<Map<String, dynamic>> generateMockEthioMarketData() {
     final random = Random();
     return [
-      {'name': 'Ethiopian Electric Power', 'symbol': 'EEP', 'price': 125.50, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Commercial Bank of Ethiopia', 'symbol': 'CBE', 'price': 85.20, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Ethiopian Airlines', 'symbol': 'ETA', 'price': 450.75, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Ethio Telecom', 'symbol': 'ETEL', 'price': 90.00, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Awash Bank', 'symbol': 'AWB', 'price': 78.45, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Dashen Bank', 'symbol': 'DB', 'price': 67.80, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'National Bank of Ethiopia', 'symbol': 'NBE', 'price': 220.00, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Ethiopian Coffee', 'symbol': 'ETCOF', 'price': 35.50, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Ethiopian Leather', 'symbol': 'ETLEA', 'price': 42.15, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Ethio Sugar', 'symbol': 'ETS', 'price': 28.90, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'United Bank', 'symbol': 'UB', 'price': 55.30, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Abyssinia Bank', 'symbol': 'ABY', 'price': 62.70, 'change': random.nextDouble() * 2 - 1},
-      {'name': 'Nib International Bank', 'symbol': 'NIB', 'price': 58.90, 'change': random.nextDouble() * 2 - 1},
+      // Banks
+      _createMarketData('Commercial Bank of Ethiopia', 'CBE', 850.20, random,
+          'Bank', 'State'),
+      _createMarketData('Awash Bank', 'AWB', 780.45, random, 'Bank', 'Private'),
+      _createMarketData(
+          'Dashen Bank', 'DSH', 670.80, random, 'Bank', 'Private'),
+      _createMarketData(
+          'Bank of Abyssinia', 'BOA', 620.70, random, 'Bank', 'Private'),
+
+      // State Enterprises
+      _createMarketData('Ethiopian Airlines Group', 'EAL', 4500.75, random,
+          'Transport', 'State'),
+      _createMarketData(
+          'Ethio Telecom', 'ET', 900.00, random, 'Telecom', 'State'),
+      _createMarketData('Ethiopian Electric Power', 'EEP', 1250.50, random,
+          'Utility', 'State'),
+
+      // Agricultural
+      _createMarketData('Ethiopian Coffee Export', 'ECEX', 355.50, random,
+          'Agriculture', 'Private'),
+      _createMarketData('Ethio Sugar Corporation', 'ESC', 289.90, random,
+          'Agriculture', 'State'),
+      _createMarketData('ELFORA Agro-Industry', 'EAI', 420.15, random,
+          'Agriculture', 'Private'),
+
+      // Manufacturing
+      _createMarketData('East African Holdings', 'EAH', 890.30, random,
+          'Manufacturing', 'Private'),
+      _createMarketData('Habesha Breweries', 'HAB', 627.00, random,
+          'Manufacturing', 'Private'),
+      _createMarketData(
+          'National Cement', 'NC', 589.00, random, 'Manufacturing', 'Private'),
     ];
   }
 
+  static Map<String, dynamic> _createMarketData(String name, String symbol,
+      double basePrice, Random random, String sector, String ownership) {
+    final change = (random.nextDouble() * 10 - 5); // -5% to +5%
+    final volume = random.nextInt(100000) + 10000;
+    final marketCap = basePrice * volume;
 
-  // Placeholder for language customization
-  static Map<String, String> getEthiopicLanguageData() {
     return {
-      'hello': 'ሰላም', 
-      'goodbye': 'ቻው', 
-
+      'name': name,
+      'symbol': symbol,
+      'price': basePrice + (basePrice * change / 100),
+      'change': change,
+      'volume': volume,
+      'marketCap': marketCap,
+      'sector': sector,
+      'ownership': ownership,
+      'currency': 'ETB',
+      'lastUpdated': DateTime.now().toString(),
     };
   }
 
-  // Placeholder for culturally relevant features
-  static List<Map<String, String>> getCulturallyRelevantData() {
+  // Market Sectors
+  static List<String> getSectors() {
     return [
-      {'feature': 'Feature 1', 'description': 'Description 1'},
-      {'feature': 'Feature 2', 'description': 'Description 2'},
+      'Bank',
+      'Transport',
+      'Telecom',
+      'Utility',
+      'Agriculture',
+      'Manufacturing'
     ];
+  }
+
+  // Ethiopian Calendar Utility
+  static Map<String, dynamic> getEthiopianDate() {
+    // Add 7 years and 8 months to get approximate Ethiopian date
+    final now = DateTime.now();
+    final ethYear = now.year + 7;
+    final ethMonth = now.month + 8;
+
+    return {
+      'year': ethYear,
+      'month': ethMonth > 12 ? ethMonth - 12 : ethMonth,
+      'day': now.day,
+      'monthName': _getEthiopianMonth(ethMonth > 12 ? ethMonth - 12 : ethMonth),
+    };
+  }
+
+  static String _getEthiopianMonth(int month) {
+    final months = [
+      'Meskerem',
+      'Tikimt',
+      'Hidar',
+      'Tahsas',
+      'Tir',
+      'Yekatit',
+      'Megabit',
+      'Miazia',
+      'Ginbot',
+      'Sene',
+      'Hamle',
+      'Nehase',
+      'Pagume'
+    ];
+    return months[month - 1];
+  }
+
+  // Amharic Translation Map
+  static Map<String, String> getAmharicTranslations() {
+    return {
+      'market': 'ገበያ',
+      'portfolio': 'ポートフォリオ',
+      'profile': 'መገለጫ',
+      'settings': 'ቅንብሮች',
+      'buy': 'ግዛ',
+      'sell': 'ሽጥ',
+      'price': 'ዋጋ',
+      'change': 'ለውጥ',
+      'volume': 'መጠን',
+      'chart': 'ቻርት',
+      'news': 'ዜና',
+      'watchlist': 'ዝርዝር',
+      'analysis': 'ጥናት',
+      'bank': 'ባንክ',
+      'agriculture': 'እርሻ',
+      'manufacturing': 'ማምረቻ',
+      'state': 'መንግስታዊ',
+      'private': 'የግል',
+    };
   }
 }
