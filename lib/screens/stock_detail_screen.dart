@@ -176,8 +176,11 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             validator: (value) => TradeValidator.validateQuantity(
-              value,
-              1000000, // Example max quantity
+              value ?? '',
+              lotSize: widget.stockData['lotSize'] ?? 1,
+              availableBalance: widget.stockData['availableBalance'] ?? 0,
+              price: double.tryParse(_priceController.text) ??
+                  widget.stockData['price'],
             ),
           ),
           const SizedBox(height: 16),
@@ -194,8 +197,9 @@ class _StockDetailScreenState extends State<StockDetailScreen>
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               validator: (value) => TradeValidator.validatePrice(
-                value,
-                widget.stockData['price'],
+                value ?? '',
+                basePrice: widget.stockData['price'],
+                tickSize: widget.stockData['tickSize'] ?? 0.01,
               ),
             ),
 
@@ -470,7 +474,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           ]),
           const SizedBox(height: 16),
           _buildInfoCard('Trading Information', [
-            _buildInfoRow('Volume', (widget.stockData['volume'] ?? '').toString()),
+            _buildInfoRow(
+                'Volume', (widget.stockData['volume'] ?? '').toString()),
             _buildInfoRow(
                 'Last Updated', widget.stockData['lastUpdated'] ?? ''),
           ]),
@@ -587,7 +592,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
         dataSource: volumeData,
         xValueMapper: (MapEntry<DateTime, double> data, _) => data.key,
         yValueMapper: (MapEntry<DateTime, double> data, _) => data.value,
-        color: Theme.of(context).primaryColor.withOpacity(0.5),
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
       ),
     ];
   }

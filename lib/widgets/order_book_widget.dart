@@ -92,8 +92,8 @@ class OrderBookWidget extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 isAsk
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : Colors.green.withValues(alpha: 0.1),
                 Colors.transparent,
               ],
               stops: [cumulative / orders.last.cumulativeTotal, 1.0],
@@ -179,32 +179,32 @@ class OrderBookChart extends StatelessWidget {
           LineChartBarData(
             spots: _convertToSpots(asks),
             isCurved: false,
-            color: Colors.red.withOpacity(0.5),
+            color: Colors.red.withValues(alpha: 0.5),
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.red.withOpacity(0.1),
+              color: Colors.red.withValues(alpha: 0.1),
             ),
           ),
           // Bids line
           LineChartBarData(
             spots: _convertToSpots(bids),
             isCurved: false,
-            color: Colors.green.withOpacity(0.5),
+            color: Colors.green.withValues(alpha: 0.5),
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
             ),
           ),
         ],
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+            tooltipBgColor: Colors.blueGrey.withValues(alpha: 0.8),
           ),
         ),
       ),

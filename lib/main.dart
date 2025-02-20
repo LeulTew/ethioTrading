@@ -9,6 +9,8 @@ import 'screens/market_screen.dart';
 import 'screens/portfolio_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/language_provider.dart';
@@ -77,13 +79,19 @@ class MyAppState extends State<MyApp> {
       navigatorObservers: [
         FirebaseAnalyticsObserver(analytics: widget.analytics),
       ],
-      home: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
-          return authProvider.isAuthenticated
-              ? MainScreen(onThemeChanged: _toggleTheme)
-              : const LoginScreen();
-        },
-      ),
+      routes: {
+        '/': (context) => Consumer<AuthProvider>(
+              builder: (context, authProvider, _) {
+                return authProvider.isAuthenticated
+                    ? MainScreen(onThemeChanged: _toggleTheme)
+                    : const LoginScreen();
+              },
+            ),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+      },
+      initialRoute: '/',
     );
   }
 }

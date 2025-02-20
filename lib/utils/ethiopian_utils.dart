@@ -1,139 +1,323 @@
+import 'package:intl/intl.dart';
+
 class EthiopianCurrencyFormatter {
+  static final NumberFormat _formatter = NumberFormat.currency(
+    locale: 'am_ET',
+    symbol: 'ETB',
+    decimalDigits: 2,
+  );
+
   static String format(double amount) {
-    final formatter = amount.toStringAsFixed(2);
-    final parts = formatter.split('.');
-    final wholePart = parts[0];
-    final decimalPart = parts[1];
-
-    // Add thousands separators
-    final chars = wholePart.split('').reversed.toList();
-    final formatted = [];
-    for (var i = 0; i < chars.length; i++) {
-      if (i > 0 && i % 3 == 0) {
-        formatted.add(',');
-      }
-      formatted.add(chars[i]);
-    }
-
-    return 'ETB ${formatted.reversed.join('')}.$decimalPart';
+    return _formatter.format(amount);
   }
 
   static double parse(String amount) {
-    // Remove currency symbol and commas
-    final cleaned = amount.replaceAll('ETB', '').replaceAll(',', '').trim();
-    return double.parse(cleaned);
+    return _formatter.parse(amount).toDouble();
   }
 }
 
 class EthiopianCalendar {
-  static Map<String, dynamic> getCurrentDate() {
-    // Ethiopian calendar is 7-8 years behind Gregorian calendar
-    final now = DateTime.now();
-    int ethYear = now.year - 7;
-    int ethMonth = now.month;
-    int ethDay = now.day;
+  static final List<String> _ethiopianMonths = [
+    'Meskerem',
+    'Tikimt',
+    'Hidar',
+    'Tahsas',
+    'Tir',
+    'Yekatit',
+    'Megabit',
+    'Miazia',
+    'Ginbot',
+    'Sene',
+    'Hamle',
+    'Nehase',
+    'Pagume'
+  ];
 
-    // Adjust for Ethiopian calendar's different new year start (September 11/12)
-    if (now.month > 9 || (now.month == 9 && now.day >= 11)) {
-      ethYear += 1;
+  static Map<String, dynamic> getCurrentDate() {
+    final gregorianDate = DateTime.now();
+    // Ethiopian calendar is 7 years and 8 months behind Gregorian calendar
+    final ethiopianYear = gregorianDate.year - 7;
+    var ethiopianMonth = gregorianDate.month + 8;
+    if (ethiopianMonth > 13) {
+      ethiopianMonth -= 13;
     }
 
     return {
-      'year': ethYear,
-      'month': ethMonth,
-      'day': ethDay,
-      'monthName': _getEthiopianMonthName(ethMonth),
+      'year': ethiopianYear,
+      'month': ethiopianMonth,
+      'monthName': _ethiopianMonths[ethiopianMonth - 1],
+      'day': gregorianDate.day,
     };
   }
 
-  static String _getEthiopianMonthName(int month) {
-    final months = [
-      'መስከረም', // Meskerem
-      'ጥቅምት', // Tikimt
-      'ህዳር', // Hidar
-      'ታህሳስ', // Tahsas
-      'ጥር', // Tir
-      'የካቲት', // Yekatit
-      'መጋቢት', // Megabit
-      'ሚያዚያ', // Miazia
-      'ግንቦት', // Ginbot
-      'ሰኔ', // Sene
-      'ሐምሌ', // Hamle
-      'ነሐሴ', // Nehase
-      'ጳጉሜ', // Pagume
-    ];
-    return months[(month - 1) % 13];
+  // Function to convert Gregorian to Islamic date (Hijri)
+  static Map<String, int> gregorianToHijri(DateTime date) {
+    // Rough approximation: Hijri year is about 11 days shorter than Gregorian
+    final gregorianYear = date.year;
+    final gregorianMonth = date.month;
+    final gregorianDay = date.day;
+
+    // Base date: 1/1/2000 Gregorian = 23/9/1420 Hijri
+    const baseGregorianYear = 2000;
+    const baseHijriYear = 1420;
+
+    // Calculate days since base date
+    final daysSinceBase = DateTime(gregorianYear, gregorianMonth, gregorianDay)
+        .difference(DateTime(baseGregorianYear, 1, 1))
+        .inDays;
+
+    // Convert to Hijri (approximate)
+    final hijriDays = daysSinceBase * 354 / 365; // Hijri year is 354 days
+    final yearsSinceBase = (hijriDays / 354).floor();
+    final hijriYear = baseHijriYear + yearsSinceBase;
+
+    // Calculate month and day (approximate)
+    final daysInYear = hijriDays % 354;
+    final month = ((daysInYear / 29.5) + 1).floor();
+    final day = (daysInYear % 29.5).floor() + 1;
+
+    return {
+      'year': hijriYear,
+      'month': month,
+      'day': day,
+    };
   }
 }
 
 class EthiopianMarketHours {
-  static bool isMarketOpen() {
-    final now = DateTime.now();
-    final ethiopianTime = now.toUtc().add(const Duration(hours: 3)); // UTC+3
+  // Ethiopian market hours are from 9:00 AM to 3:00 PM EAT (UTC+3)
+  static const int marketOpenHour = 9;
+  static const int marketCloseHour = 15;
 
-    // Market is closed on weekends
-    if (ethiopianTime.weekday == DateTime.saturday ||
-        ethiopianTime.weekday == DateTime.sunday) {
+  // List of fixed Ethiopian holidays (month and day in Gregorian calendar)
+  static const Map<int, List<int>> _fixedHolidays = {
+    1: [
+      7,
+      19
+    ], // Genna (Ethiopian Christmas) - Jan 7, Timkat (Epiphany) - Jan 19
+    3: [2], // Adwa Victory Day - March 2
+    5: [1, 28], // Labor Day - May 1, Derg Downfall Day - May 28
+    9: [11, 27], // Ethiopian New Year (Enkutatash) - Sept 11, Meskel - Sept 27
+  };
+
+  // List of variable Ethiopian holidays (calculated based on Ethiopian and Islamic calendars)
+  static bool _isVariableHoliday(DateTime date) {
+    final ethiopianDate = EthiopianCalendar.getCurrentDate();
+    final hijriDate = EthiopianCalendar.gregorianToHijri(date);
+
+    // Fasika (Ethiopian Easter) - Calculate based on Ethiopian calendar
+    if (ethiopianDate['month'] == 8) {
+      if (ethiopianDate['day'] >= 14 && ethiopianDate['day'] <= 16) {
+        return true;
+      }
+    }
+
+    final hijriMonth = hijriDate['month'] ?? 0;
+    final hijriDay = hijriDate['day'] ?? 0;
+
+    // Eid Al-Fitr (1st Shawwal)
+    if (hijriMonth == 10 && hijriDay <= 3) {
+      return true;
+    }
+
+    // Eid Al-Adha (10th Dhul Hijjah)
+    if (hijriMonth == 12 && hijriDay >= 10 && hijriDay <= 12) {
+      return true;
+    }
+
+    // Prophet Muhammad's Birthday (12th Rabi' al-Awwal)
+    if (hijriMonth == 3 && hijriDay == 12) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static bool isHoliday(DateTime date) {
+    // Check fixed holidays
+    final fixedHolidayDays = _fixedHolidays[date.month];
+    if (fixedHolidayDays != null && fixedHolidayDays.contains(date.day)) {
+      return true;
+    }
+
+    // Check variable holidays
+    return _isVariableHoliday(date);
+  }
+
+  // Market is closed on weekends and Ethiopian holidays
+  static bool isMarketOpen() {
+    final now = DateTime.now().toLocal();
+    final hour = now.hour;
+    final minute = now.minute;
+
+    // Check if it's weekend
+    if (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday) {
       return false;
     }
 
-    // Market hours: 9:00 AM - 4:00 PM Ethiopian time
-    final hour = ethiopianTime.hour;
-    return hour >= 9 && hour < 16;
+    // Check if it's a holiday
+    if (isHoliday(now)) {
+      return false;
+    }
+
+    // Check if within trading hours
+    if (hour < marketOpenHour || hour >= marketCloseHour) {
+      return false;
+    }
+
+    // Special case for market closing time
+    if (hour == marketCloseHour - 1 && minute >= 30) {
+      return false; // Market closes at 14:30
+    }
+
+    return true;
   }
 
   static String getMarketStatus() {
-    if (!isMarketOpen()) {
-      final now = DateTime.now();
-      final ethiopianTime = now.toUtc().add(const Duration(hours: 3));
+    final now = DateTime.now().toLocal();
+    final hour = now.hour;
 
-      if (ethiopianTime.weekday == DateTime.saturday ||
-          ethiopianTime.weekday == DateTime.sunday) {
-        return 'ገበያው ዝግ ነው - ወደ ሚቀጥለው የስራ ቀን';
-      }
-
-      if (ethiopianTime.hour < 9) {
-        return 'ገበያው ዝግ ነው - 9:00 AM ይከፈታል';
-      }
-
-      return 'ገበያው ዝግ ነው - ነገ 9:00 AM ይከፈታል';
+    if (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday) {
+      final nextOpeningDate = _getNextTradingDay();
+      final formatter = DateFormat('EEEE, MMMM d');
+      return 'Market Closed - Opens ${formatter.format(nextOpeningDate)} at 9:00 AM';
     }
 
-    return 'ገበያው ክፍት ነው';
+    if (isHoliday(now)) {
+      final nextOpeningDate = _getNextTradingDay();
+      final formatter = DateFormat('EEEE, MMMM d');
+      return 'Market Closed (Holiday) - Opens ${formatter.format(nextOpeningDate)} at 9:00 AM';
+    }
+
+    if (hour < marketOpenHour) {
+      return 'Pre-market - Opens at 9:00 AM';
+    } else if (hour >= marketCloseHour ||
+        (hour == marketCloseHour - 1 && now.minute >= 30)) {
+      return 'Market Closed - Opens next trading day at 9:00 AM';
+    }
+
+    return 'Market Open - Closes at 2:30 PM';
   }
 
-  static String getNextMarketOpenTime() {
-    final now = DateTime.now();
-    final ethiopianTime = now.toUtc().add(const Duration(hours: 3));
-
-    if (isMarketOpen()) {
-      return 'ገበያው አሁን ክፍት ነው';
-    }
-
-    DateTime nextOpen;
-    if (ethiopianTime.hour < 9) {
-      // Market opens today at 9 AM
-      nextOpen = DateTime(
-          ethiopianTime.year, ethiopianTime.month, ethiopianTime.day, 9, 0);
-    } else {
-      // Market opens next business day at 9 AM
-      nextOpen = DateTime(
-              ethiopianTime.year, ethiopianTime.month, ethiopianTime.day, 9, 0)
-          .add(const Duration(days: 1));
-
-      // Skip weekends
-      while (nextOpen.weekday == DateTime.saturday ||
-          nextOpen.weekday == DateTime.sunday) {
-        nextOpen = nextOpen.add(const Duration(days: 1));
-      }
-    }
-
-    return 'ገበያው ${_formatDateTime(nextOpen)} ይከፈታል';
+  static DateTime _getNextTradingDay() {
+    var date = DateTime.now().toLocal();
+    do {
+      date = date.add(const Duration(days: 1));
+    } while (date.weekday == DateTime.saturday ||
+        date.weekday == DateTime.sunday ||
+        isHoliday(date));
+    return date;
   }
 
-  static String _formatDateTime(DateTime dt) {
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final period = dt.hour < 12 ? 'AM' : 'PM';
-    return '$hour:00 $period';
+  static String getMarketPhase() {
+    if (!isMarketOpen()) return 'closed';
+
+    final now = DateTime.now().toLocal();
+    final hour = now.hour;
+
+    if (hour < 10) return 'opening';
+    if (hour > 13) return 'closing';
+    return 'main';
+  }
+}
+
+class TradingValidator {
+  // Maximum daily price movement allowed (10% in Ethiopian market)
+  static const double maxDailyPriceChange = 0.10;
+
+  // Minimum trade amount in ETB
+  static const double minTradeAmount = 100.0;
+
+  static bool isValidPrice(double currentPrice, double basePrice) {
+    final maxChange = basePrice * maxDailyPriceChange;
+    return (currentPrice - basePrice).abs() <= maxChange;
+  }
+
+  static bool isValidTradeAmount(double amount) {
+    return amount >= minTradeAmount;
+  }
+
+  static double calculateCommission(double tradeAmount) {
+    // Ethiopian market commission structure
+    const double baseCommission = 0.0027; // 0.27%
+    const double minCommission = 50.0; // Minimum 50 ETB
+
+    final commission = tradeAmount * baseCommission;
+    return commission < minCommission ? minCommission : commission;
+  }
+
+  static Map<String, double> calculateTradingFees({
+    required double amount,
+    bool isBuy = true,
+  }) {
+    final commission = calculateCommission(amount);
+    // VAT on commission (15%)
+    final vat = commission * 0.15;
+    // Capital gains tax (15% on sell transactions)
+    final capitalGainsTax = isBuy ? 0.0 : amount * 0.15;
+
+    return {
+      'commission': commission,
+      'vat': vat,
+      'capitalGainsTax': capitalGainsTax,
+      'total': commission + vat + capitalGainsTax,
+    };
+  }
+}
+
+class MarketStatistics {
+  static Map<String, dynamic> calculateMarketMetrics(
+      List<Map<String, dynamic>> stocks) {
+    if (stocks.isEmpty) {
+      return {
+        'totalVolume': 0.0,
+        'totalValue': 0.0,
+        'advancers': 0,
+        'decliners': 0,
+        'unchanged': 0,
+        'marketIndex': 0.0,
+        'indexChange': 0.0,
+      };
+    }
+
+    double totalVolume = 0;
+    double totalValue = 0;
+    int advancers = 0;
+    int decliners = 0;
+    int unchanged = 0;
+    double weightedIndexValue = 0;
+    double previousIndexValue = 0;
+
+    for (final stock in stocks) {
+      totalVolume += stock['volume'] as double;
+      final value = (stock['price'] as double) * (stock['volume'] as double);
+      totalValue += value;
+
+      final change = stock['change'] as double;
+      if (change > 0) {
+        advancers++;
+      } else if (change < 0) {
+        decliners++;
+      } else {
+        unchanged++;
+      }
+
+      // Market cap weighted index calculation
+      weightedIndexValue += value;
+      previousIndexValue += value / (1 + change / 100);
+    }
+
+    final indexChange =
+        ((weightedIndexValue - previousIndexValue) / previousIndexValue) * 100;
+
+    return {
+      'totalVolume': totalVolume,
+      'totalValue': totalValue,
+      'advancers': advancers,
+      'decliners': decliners,
+      'unchanged': unchanged,
+      'marketIndex': weightedIndexValue,
+      'indexChange': indexChange,
+    };
   }
 }

@@ -147,7 +147,8 @@ class _TechnicalAnalysisWidgetState extends State<TechnicalAnalysisWidget> {
   List<Map<String, double>> _calculateBollingerBands(
       int period, double stdDev) {
     final List<Map<String, double>> bbands = [];
-    final List<double> closePrices = getPrices();  // Using the fixed getPrices method
+    final List<double> closePrices =
+        getPrices(); // Using the fixed getPrices method
 
     for (int i = period - 1; i < closePrices.length; i++) {
       final List<double> subset = closePrices.sublist(i - period + 1, i + 1);
@@ -171,14 +172,15 @@ class _TechnicalAnalysisWidgetState extends State<TechnicalAnalysisWidget> {
     return bbands;
   }
 
-  List<double> calculateMACD(List<double> prices, {int shortPeriod = 12, int longPeriod = 26, int signalPeriod = 9}) {
+  List<double> calculateMACD(List<double> prices,
+      {int shortPeriod = 12, int longPeriod = 26, int signalPeriod = 9}) {
     List<double> shortEMA = calculateEMA(prices, shortPeriod);
     List<double> longEMA = calculateEMA(prices, longPeriod);
     List<double> macdLine = List.generate(
       prices.length,
       (i) => i < longPeriod - 1 ? 0 : shortEMA[i] - longEMA[i],
     );
-    
+
     // Use the signal line in the MACD calculation
     List<double> signalLine = calculateEMA(macdLine, signalPeriod);
     return List.generate(
@@ -189,27 +191,28 @@ class _TechnicalAnalysisWidgetState extends State<TechnicalAnalysisWidget> {
 
   List<double> calculateBollingerBands(List<dynamic> prices, int period) {
     // Convert dynamic list to double list
-    List<double> priceDoubles = prices.map<double>((price) => price.toDouble()).toList();
+    List<double> priceDoubles =
+        prices.map<double>((price) => price.toDouble()).toList();
     double sma = priceDoubles.reduce((a, b) => a + b) / period;
     double standardDeviation = calculateStandardDeviation(priceDoubles, sma);
     return [
-      sma + (2 * standardDeviation),  // Upper band
-      sma,                            // Middle band
-      sma - (2 * standardDeviation),  // Lower band
+      sma + (2 * standardDeviation), // Upper band
+      sma, // Middle band
+      sma - (2 * standardDeviation), // Lower band
     ];
   }
 
   List<double> calculateEMA(List<double> prices, int period) {
     double multiplier = 2 / (period + 1);
     List<double> ema = List.filled(prices.length, 0);
-    
+
     // Start with SMA for the first period
     double sum = 0;
     for (int i = 0; i < period; i++) {
       sum += prices[i];
     }
     ema[period - 1] = sum / period;
-    
+
     // Calculate EMA
     for (int i = period; i < prices.length; i++) {
       ema[i] = (prices[i] - ema[i - 1]) * multiplier + ema[i - 1];
@@ -248,7 +251,8 @@ class _TechnicalAnalysisWidgetState extends State<TechnicalAnalysisWidget> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Text('Technical Analysis', style: Theme.of(context).textTheme.titleLarge),
+          Text('Technical Analysis',
+              style: Theme.of(context).textTheme.titleLarge),
           SizedBox(
             height: 300,
             child: SfCartesianChart(

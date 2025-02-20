@@ -146,6 +146,19 @@ const Map<String, String> englishTranslations = {
   'insufficient_funds': 'Insufficient funds',
   'invalid_quantity': 'Invalid quantity',
   'invalid_price': 'Invalid price',
+
+  // Enhanced Login Screen
+  'welcome_back': 'Welcome Back',
+  'login_subtitle':
+      'Sign in to continue trading on Ethiopia\'s premier trading platform',
+  'remember_me': 'Remember me',
+  'new_user_prompt': 'Don\'t have an account?',
+  'login_success': 'Login successful',
+  'email_hint': 'Enter your email address',
+  'password_hint': 'Enter your password',
+  'invalid_credentials': 'Invalid email or password',
+  'network_error': 'Network connection error',
+  'server_error': 'Server error occurred',
 };
 
 const Map<String, String> amharicTranslations = {
@@ -220,5 +233,17 @@ const Map<String, String> amharicTranslations = {
   'market_closed': 'ገበያ ተዘግቷል',
   'next_opening': 'ቀጣይ መክፈቻ',
   'pre_market': 'ቅድመ-ገበያ',
-  'after_hours': 'ከሰዓታት በኋላ'
+  'after_hours': 'ከሰዓታት በኋላ',
+
+  // Enhanced Login Screen
+  'welcome_back': 'እንኳን በደህና መጡ',
+  'login_subtitle': 'በኢትዮጵያ ዋና የንግድ መድረክ ለመገበያየት ይግቡ',
+  'remember_me': 'አስታውሰኝ',
+  'new_user_prompt': 'አካውንት የለዎትም?',
+  'login_success': 'በተሳካ ሁኔታ ገብተዋል',
+  'email_hint': 'ኢሜይል አድራሻዎን ያስገቡ',
+  'password_hint': 'የይለፍ ቃል ያስገቡ',
+  'invalid_credentials': 'ትክክል ያልሆነ ኢሜይል ወይም የይለፍ ቃል',
+  'network_error': 'የኔትዎርክ ግንኙነት ስህተት',
+  'server_error': 'የサーバー ስህተት ተከስቷል',
 };

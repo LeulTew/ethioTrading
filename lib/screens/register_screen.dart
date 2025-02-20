@@ -6,90 +6,105 @@ import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/validators.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
-  bool _rememberMe = false;
-  late AnimationController _backgroundAnimationController;
-  late Animation<double> _backgroundAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _backgroundAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat(reverse: true);
-
-    _backgroundAnimation = Tween<double>(
-      begin: -0.1,
-      end: 0.1,
-    ).animate(_backgroundAnimationController);
-  }
+  bool _acceptTerms = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _backgroundAnimationController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin(BuildContext context) async {
+  Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_acceptTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              context.read<LanguageProvider>().translate('accept_terms_error')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final authProvider = context.read<AuthProvider>();
-      await authProvider.signIn(
+      await authProvider.register(
         _emailController.text.trim(),
         _passwordController.text,
+        _usernameController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // Show success animation before navigation
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login successful'),
+        SnackBar(
+          content: Text(context
+              .read<LanguageProvider>()
+              .translate('registration_success')),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
-          ),
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
+
+      // Let the snackbar be visible for a moment before navigation
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (!mounted) return;
+      // Navigate to home and clear the stack
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     } catch (e) {
       if (!mounted) return;
 
+      String errorMessage = e.toString();
+      // Remove "Exception: " prefix if present
+      if (errorMessage.startsWith('Exception: ')) {
+        errorMessage = errorMessage.substring(10);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
           ),
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -101,41 +116,17 @@ class _LoginScreenState extends State<LoginScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // Animated background gradient
-          AnimatedBuilder(
-            animation: _backgroundAnimation,
-            builder: (context, child) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(
-                      _backgroundAnimation.value,
-                      -_backgroundAnimation.value,
-                    ),
-                    end: Alignment(
-                      -_backgroundAnimation.value,
-                      _backgroundAnimation.value,
-                    ),
-                    colors: [
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
-                      theme.colorScheme.secondary.withValues(alpha: 0.1),
-                      theme.colorScheme.tertiary.withValues(alpha: 0.1),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Decorative patterns
+          // Background Pattern
           CustomPaint(
             painter: BackgroundPatternPainter(
               color: theme.colorScheme.primary.withValues(alpha: 0.03),
+              dotSize: 1.2,
+              spacing: 25,
             ),
             size: Size.infinite,
           ),
 
-          // Main content
+          // Main Content
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -144,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo and welcome text
+                    // Header Section
                     FadeInDown(
                       duration: const Duration(milliseconds: 800),
                       child: Column(
@@ -153,25 +144,25 @@ class _LoginScreenState extends State<LoginScreen>
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: theme.colorScheme.primary
+                              color: theme.colorScheme.secondary
                                   .withValues(alpha: 0.1),
                             ),
-                            child: Image.asset(
-                              'assets/images/logo.png',
-                              height: 80,
-                              width: 80,
+                            child: Icon(
+                              Icons.person_add_outlined,
+                              size: 48,
+                              color: theme.colorScheme.secondary,
                             ),
                           ),
                           const SizedBox(height: 24),
                           ShaderMask(
                             shaderCallback: (bounds) => LinearGradient(
                               colors: [
-                                theme.colorScheme.primary,
                                 theme.colorScheme.secondary,
+                                theme.colorScheme.primary,
                               ],
                             ).createShader(bounds),
                             child: Text(
-                              lang.translate('welcome_back'),
+                              lang.translate('create_account'),
                               style: GoogleFonts.poppins(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -181,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            lang.translate('login_subtitle'),
+                            lang.translate('register_subtitle'),
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               color: theme.colorScheme.onSurface
@@ -193,16 +184,17 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
 
-                    // Login form
+                    // Registration Form
                     FadeInUp(
                       duration: const Duration(milliseconds: 800),
                       delay: const Duration(milliseconds: 300),
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: theme.cardColor.withValues(alpha: 0.9),
+                          color:
+                              theme.colorScheme.surface.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
@@ -217,7 +209,21 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Email field
+                              _buildTextField(
+                                controller: _usernameController,
+                                labelText: lang.translate('username'),
+                                prefixIcon: Icons.person_outline,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return lang.translate('username_required');
+                                  }
+                                  if (value.length < 3) {
+                                    return lang.translate('username_too_short');
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _emailController,
                                 labelText: lang.translate('email'),
@@ -225,19 +231,16 @@ class _LoginScreenState extends State<LoginScreen>
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return lang.translate('please_enter_email');
+                                    return lang.translate('email_required');
                                   }
                                   if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$')
                                       .hasMatch(value)) {
-                                    return lang.translate('enter_valid_email');
+                                    return lang.translate('invalid_email');
                                   }
                                   return null;
                                 },
                               ),
-
-                              const SizedBox(height: 24),
-
-                              // Password field
+                              const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _passwordController,
                                 labelText: lang.translate('password'),
@@ -249,78 +252,84 @@ class _LoginScreenState extends State<LoginScreen>
                                     _isPasswordVisible
                                         ? Icons.visibility_outlined
                                         : Icons.visibility_off_outlined,
-                                    color: theme.colorScheme.primary,
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isPasswordVisible = !_isPasswordVisible;
-                                    });
-                                  },
+                                  onPressed: () => setState(
+                                    () => _isPasswordVisible =
+                                        !_isPasswordVisible,
+                                  ),
                                 ),
                               ),
-
                               const SizedBox(height: 16),
-
-                              // Remember me and Forgot password
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        height: 24,
-                                        width: 24,
-                                        child: Checkbox(
-                                          value: _rememberMe,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _rememberMe = value!;
-                                            });
-                                          },
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        lang.translate('remember_me'),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
+                              _buildTextField(
+                                controller: _confirmPasswordController,
+                                labelText: lang.translate('confirm_password'),
+                                prefixIcon: Icons.lock_outline,
+                                obscureText: !_isConfirmPasswordVisible,
+                                validator: (value) {
+                                  if (value != _passwordController.text) {
+                                    return lang
+                                        .translate('passwords_not_match');
+                                  }
+                                  return null;
+                                },
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _isConfirmPasswordVisible
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pushNamed(
-                                          context, '/forgot-password');
-                                    },
-                                    child: Text(
-                                      lang.translate('forgot_password'),
-                                      style: GoogleFonts.poppins(
-                                        color: theme.colorScheme.primary,
-                                        fontWeight: FontWeight.w600,
+                                  onPressed: () => setState(
+                                    () => _isConfirmPasswordVisible =
+                                        !_isConfirmPasswordVisible,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: Checkbox(
+                                      value: _acceptTerms,
+                                      onChanged: (value) =>
+                                          setState(() => _acceptTerms = value!),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
                                       ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: '${lang.translate("i_accept")} ',
+                                        children: [
+                                          TextSpan(
+                                            text: lang.translate(
+                                                'terms_and_conditions'),
+                                            style: TextStyle(
+                                              color: theme.colorScheme.primary,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      style: GoogleFonts.poppins(fontSize: 14),
                                     ),
                                   ),
                                 ],
                               ),
-
                               const SizedBox(height: 24),
-
-                              // Login button
                               ElevatedButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : () => _handleLogin(context),
+                                onPressed: _isLoading ? null : _handleRegister,
                                 style: ElevatedButton.styleFrom(
+                                  backgroundColor: theme.colorScheme.secondary,
+                                  foregroundColor:
+                                      theme.colorScheme.onSecondary,
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),
-                                  backgroundColor: theme.colorScheme.primary,
-                                  foregroundColor: theme.colorScheme.onPrimary,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -338,7 +347,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         ),
                                       )
                                     : Text(
-                                        lang.translate('login'),
+                                        lang.translate('create_account'),
                                         style: GoogleFonts.poppins(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -353,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 24),
 
-                    // Register link
+                    // Login Link
                     FadeInUp(
                       duration: const Duration(milliseconds: 800),
                       delay: const Duration(milliseconds: 600),
@@ -361,21 +370,20 @@ class _LoginScreenState extends State<LoginScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            lang.translate('new_user_prompt'),
+                            lang.translate('already_have_account'),
                             style: GoogleFonts.poppins(
-                              color: theme.colorScheme.onSurface
+                              color: theme.colorScheme.onBackground
                                   .withValues(alpha: 0.7),
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/register');
-                            },
+                            onPressed: () => Navigator.pushReplacementNamed(
+                                context, '/login'),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.primary,
                             ),
                             child: Text(
-                              lang.translate('register'),
+                              lang.translate('login'),
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -403,6 +411,7 @@ class _LoginScreenState extends State<LoginScreen>
     String? Function(String?)? validator,
     Widget? suffixIcon,
   }) {
+    final theme = Theme.of(context);
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
@@ -410,59 +419,61 @@ class _LoginScreenState extends State<LoginScreen>
       style: GoogleFonts.poppins(),
       decoration: InputDecoration(
         labelText: labelText,
-        prefixIcon:
-            Icon(prefixIcon, color: Theme.of(context).colorScheme.primary),
+        prefixIcon: Icon(prefixIcon, color: theme.colorScheme.primary),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          borderSide: BorderSide(color: theme.colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
+            color: theme.colorScheme.secondary,
             width: 2,
           ),
         ),
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surface,
+        fillColor: theme.colorScheme.surface,
       ),
       validator: validator,
     );
   }
 }
 
-// Custom painter for background pattern
 class BackgroundPatternPainter extends CustomPainter {
   final Color color;
+  final double dotSize;
+  final double spacing;
 
-  BackgroundPatternPainter({required this.color});
+  BackgroundPatternPainter({
+    required this.color,
+    this.dotSize = 1.0,
+    this.spacing = 30.0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    const spacing = 30.0;
-    const dotRadius = 1.0;
+      ..strokeWidth = dotSize
+      ..style = PaintingStyle.fill;
 
     for (var i = 0.0; i < size.width; i += spacing) {
       for (var j = 0.0; j < size.height; j += spacing) {
-        canvas.drawCircle(Offset(i, j), dotRadius, paint);
+        canvas.drawCircle(Offset(i, j), dotSize, paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(BackgroundPatternPainter oldDelegate) => false;
+  bool shouldRepaint(BackgroundPatternPainter oldDelegate) =>
+      color != oldDelegate.color ||
+      dotSize != oldDelegate.dotSize ||
+      spacing != oldDelegate.spacing;
 }

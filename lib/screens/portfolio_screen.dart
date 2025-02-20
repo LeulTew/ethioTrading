@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../utils/ethiopian_utils.dart';
-import '../data/ethio_data.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import '../data/mock_data.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -17,6 +18,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
   double _totalValue = 0;
   double _todayGain = 0;
   double _totalGain = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -26,82 +28,51 @@ class _PortfolioScreenState extends State<PortfolioScreen>
   }
 
   void _generateMockPortfolioData() {
-    final marketData = EthioData.generateMockEthioMarketData();
-
-    // Generate holdings
-    for (var i = 0; i < 5; i++) {
-      final stock = marketData[i];
-      final quantity = (10 + i * 5).toDouble();
-      final value = quantity * stock['price'];
-
-      _holdings.add({
-        ...stock,
-        'quantity': quantity,
-        'value': value,
-        'avgPrice': stock['price'] - (stock['price'] * stock['change'] / 100),
-      });
-    }
-
-    // Generate transactions
-    final transactionTypes = ['buy', 'sell'];
-    for (var i = 0; i < 10; i++) {
-      final stock = marketData[i % marketData.length];
-      final type = transactionTypes[i % 2];
-      final quantity = (5 + i).toDouble();
-      final price = stock['price'] - (i * 2);
-
-      _transactions.add({
-        ...stock,
-        'type': type,
-        'quantity': quantity,
-        'price': price,
-        'date': DateTime.now().subtract(Duration(days: i)),
-        'total': quantity * price,
-      });
-    }
-
-    // Calculate portfolio metrics
-    _totalValue = _holdings.fold(0, (sum, holding) => sum + holding['value']);
-    _todayGain = _holdings.fold(
-        0,
-        (sum, holding) =>
-            sum +
-            (holding['price'] - holding['avgPrice']) * holding['quantity']);
-    _totalGain = _holdings.fold(
-        0,
-        (sum, holding) =>
-            sum +
-            (holding['price'] - holding['avgPrice']) * holding['quantity']);
+    final portfolioData = MockPortfolio.generateMockPortfolioData();
+    setState(() {
+      _holdings
+          .addAll(List<Map<String, dynamic>>.from(portfolioData['holdings']));
+      _transactions.addAll(
+          List<Map<String, dynamic>>.from(portfolioData['transactions']));
+      _totalValue = portfolioData['totalValue'];
+      _todayGain = portfolioData['todayGain'];
+      _totalGain = portfolioData['totalGain'];
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currencyFormatter =
+        NumberFormat.currency(locale: 'am_ET', symbol: 'ETB', decimalDigits: 2);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ፖርትፎሊዮ'), // Portfolio in Amharic
+        title: const Text('Portfolio'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'አጠቃላይ'), // Overview
-            Tab(text: 'ንብረቶች'), // Holdings
-            Tab(text: 'ግብይቶች'), // Transactions
+            Tab(text: 'Overview'),
+            Tab(text: 'Holdings'),
+            Tab(text: 'History'),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOverviewTab(theme),
-          _buildHoldingsTab(theme),
-          _buildTransactionsTab(theme),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOverviewTab(theme, currencyFormatter),
+                _buildHoldingsTab(theme, currencyFormatter),
+                _buildTransactionsTab(theme, currencyFormatter),
+              ],
+            ),
     );
   }
 
-  Widget _buildOverviewTab(ThemeData theme) {
+  Widget _buildOverviewTab(ThemeData theme, NumberFormat currencyFormatter) {
     final isPositiveTodayGain = _todayGain >= 0;
     final isPositiveTotalGain = _totalGain >= 0;
 
@@ -116,28 +87,31 @@ class _PortfolioScreenState extends State<PortfolioScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ጠቅላላ እሴት',
-                      style: theme.textTheme.titleMedium), // Total Value
+                  Text('Portfolio Value', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Text(
-                    EthiopianCurrencyFormatter.format(_totalValue),
-                    style: theme.textTheme.headlineSmall,
+                    currencyFormatter.format(_totalValue),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildGainLossWidget(
-                        'የዛሬ ለውጥ', // Today's Change
+                        'Today',
                         _todayGain,
                         isPositiveTodayGain,
                         theme,
+                        currencyFormatter,
                       ),
                       _buildGainLossWidget(
-                        'ጠቅላላ ለውጥ', // Total Change
+                        'Total Return',
                         _totalGain,
                         isPositiveTotalGain,
                         theme,
+                        currencyFormatter,
                       ),
                     ],
                   ),
@@ -145,9 +119,8 @@ class _PortfolioScreenState extends State<PortfolioScreen>
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          Text('የንብረት ስርጭት',
-              style: theme.textTheme.titleLarge), // Asset Distribution
+          const SizedBox(height: 16),
+          _buildPortfolioChart(theme),
           const SizedBox(height: 16),
           _buildDistributionChart(theme),
         ],
@@ -155,8 +128,8 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildGainLossWidget(
-      String label, double value, bool isPositive, ThemeData theme) {
+  Widget _buildGainLossWidget(String label, double value, bool isPositive,
+      ThemeData theme, NumberFormat currencyFormatter) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -171,85 +144,189 @@ class _PortfolioScreenState extends State<PortfolioScreen>
             ),
             const SizedBox(width: 4),
             Text(
-              EthiopianCurrencyFormatter.format(value.abs()),
-              style: theme.textTheme.bodyLarge?.copyWith(
+              currencyFormatter.format(value.abs()),
+              style: theme.textTheme.titleMedium?.copyWith(
                 color: isPositive ? Colors.green : Colors.red,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
+        Text(
+          '${isPositive ? '+' : '-'}${(value.abs() / _totalValue * 100).toStringAsFixed(2)}%',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: isPositive ? Colors.green : Colors.red,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildPortfolioChart(ThemeData theme) {
+    final spots = List<FlSpot>.generate(
+      30,
+      (index) => FlSpot(
+        index.toDouble(),
+        _totalValue * (1 + (index / 100)),
+      ),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Portfolio Performance', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          if (value % 7 == 0) {
+                            return Text(
+                              DateFormat.MMMd().format(DateTime.now().subtract(
+                                  Duration(days: 30 - value.toInt()))),
+                              style: theme.textTheme.bodySmall,
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: theme.colorScheme.primary,
+                      barWidth: 2,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildDistributionChart(ThemeData theme) {
     final sectors = <String, double>{};
     for (final holding in _holdings) {
-      final sector = holding['sector'] as String;
+      final asset = holding['asset'];
+      final sector = asset.sector;
       sectors[sector] = (sectors[sector] ?? 0) + holding['value'];
     }
 
-    return Column(
-      children: sectors.entries.map((entry) {
-        final percentage = (entry.value / _totalValue * 100).toStringAsFixed(1);
-        return Column(
+    final total = sectors.values.fold(0.0, (sum, value) => sum + value);
+    final sectorPercentages = sectors.map(
+      (sector, value) =>
+          MapEntry(sector, (value / total * 100).roundToDouble()),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  flex: (entry.value / _totalValue * 100).round(),
-                  child: Container(
-                    height: 24,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+            Text('Sector Distribution', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            Column(
+              children: sectorPercentages.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(entry.key, style: theme.textTheme.bodyMedium),
+                          Text('${entry.value}%',
+                              style: theme.textTheme.bodyMedium),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: entry.value / 100,
+                        backgroundColor:
+                            theme.colorScheme.primary.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.primary),
+                      ),
+                    ],
                   ),
-                ),
-                Expanded(
-                  flex: 100 - (entry.value / _totalValue * 100).round(),
-                  child: Text('$percentage% ${entry.key}'),
-                ),
-              ],
+                );
+              }).toList(),
             ),
-            const SizedBox(height: 8),
           ],
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 
-  Widget _buildHoldingsTab(ThemeData theme) {
+  Widget _buildHoldingsTab(ThemeData theme, NumberFormat currencyFormatter) {
     return ListView.builder(
       itemCount: _holdings.length,
       itemBuilder: (context, index) {
         final holding = _holdings[index];
-        final gainLoss =
-            (holding['price'] - holding['avgPrice']) * holding['quantity'];
-        final isPositive = gainLoss >= 0;
+        final asset = holding['asset'];
+        final value = holding['value'];
+        final gain = holding['gain'];
+        final isPositive = gain >= 0;
 
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
-            title: Text(holding['name']),
-            subtitle: Text(
-                '${holding['quantity'].toStringAsFixed(0)} አክሲዮኖች'), // shares
+            title: Text(asset.name),
+            subtitle: Text(asset.symbol),
             trailing: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  EthiopianCurrencyFormatter.format(holding['value']),
+                  currencyFormatter.format(value),
                   style: theme.textTheme.titleMedium,
                 ),
-                Text(
-                  '${isPositive ? '+' : ''}${EthiopianCurrencyFormatter.format(gainLoss)}',
-                  style: TextStyle(
-                    color: isPositive ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: isPositive ? Colors.green : Colors.red,
+                      size: 12,
+                    ),
+                    Text(
+                      currencyFormatter.format(gain.abs()),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isPositive ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -259,39 +336,42 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildTransactionsTab(ThemeData theme) {
+  Widget _buildTransactionsTab(
+      ThemeData theme, NumberFormat currencyFormatter) {
     return ListView.builder(
       itemCount: _transactions.length,
       itemBuilder: (context, index) {
         final transaction = _transactions[index];
+        final asset = transaction['asset'];
         final isBuy = transaction['type'] == 'buy';
+        final amount = transaction['price'] * transaction['quantity'];
 
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: isBuy
-                  ? Colors.green.withAlpha((0.1 * 255).round())
-                  : Colors.red.withAlpha((0.1 * 255).round()),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.red.withValues(alpha: 0.1),
               child: Icon(
                 isBuy ? Icons.add : Icons.remove,
                 color: isBuy ? Colors.green : Colors.red,
               ),
             ),
-            title: Text(transaction['name']),
+            title: Text(asset.name),
             subtitle: Text(
-              '${transaction['quantity'].toStringAsFixed(0)} አክሲዮኖች @ ${EthiopianCurrencyFormatter.format(transaction['price'])}',
+              DateFormat.yMMMd().add_jm().format(transaction['timestamp']),
             ),
             trailing: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  EthiopianCurrencyFormatter.format(transaction['total']),
+                  currencyFormatter.format(amount),
                   style: theme.textTheme.titleMedium,
                 ),
                 Text(
-                  transaction['date'].toString().split(' ')[0],
+                  '${transaction['quantity']} shares @ ${currencyFormatter.format(transaction['price'])}',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
