@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:candlesticks/candlesticks.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:provider/provider.dart';
 import '../utils/ethiopian_utils.dart';
+import '../utils/validators.dart';
+import '../providers/language_provider.dart';
 import 'dart:math' as math;
 
 class StockDetailScreen extends StatefulWidget {
-  final Map<String, dynamic>? stockData;
+  final Map<String, dynamic> stockData;
 
   const StockDetailScreen({
     super.key,
-    this.stockData,
+    required this.stockData,
   });
 
   @override
@@ -19,34 +24,290 @@ class _StockDetailScreenState extends State<StockDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
   bool isBuySelected = true;
   bool isInWatchlist = false;
+  bool isMarketOrder = true;
+  String selectedTimeframe = '1D';
   List<Map<String, dynamic>> mockNews = [];
+  List<Candle> candles = [];
+  bool showVolume = true;
+  bool showGrid = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _quantityController.text = '1';
+    _priceController.text = widget.stockData['price'].toString();
     _generateMockNews();
+    _generateCandleData();
+  }
+
+  void _generateCandleData() {
+    final random = math.Random();
+    double open = widget.stockData['price'];
+    double close = open;
+    final List<Candle> generatedCandles = [];
+
+    // Generate 100 candles for historical data
+    for (int i = 100; i > 0; i--) {
+      open = close;
+      // Generate realistic price movements
+      final changePercent = (random.nextDouble() - 0.5) * 2; // -1% to +1%
+      close = open * (1 + changePercent / 100);
+      final high = math.max(open, close) * (1 + random.nextDouble() / 100);
+      final low = math.min(open, close) * (1 - random.nextDouble() / 100);
+      final volume = random.nextDouble() * 100000;
+
+      generatedCandles.add(
+        Candle(
+          date: DateTime.now().subtract(Duration(days: i)),
+          high: high,
+          low: low,
+          open: open,
+          close: close,
+          volume: volume,
+        ),
+      );
+    }
+
+    setState(() => candles = generatedCandles);
+  }
+
+  Widget _buildAdvancedChart() {
+    return Column(
+      children: [
+        Expanded(
+          child: Candlesticks(
+            candles: candles,
+          ),
+        ),
+        _buildTimeframeSelector(),
+      ],
+    );
+  }
+
+  Widget _buildTimeframeSelector() {
+    final timeframes = ['1D', '1W', '1M', '3M', '6M', '1Y', 'ALL'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: timeframes.map((timeframe) {
+          final isSelected = selectedTimeframe == timeframe;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ChoiceChip(
+              label: Text(timeframe),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    selectedTimeframe = timeframe;
+                    _generateCandleData(); // Regenerate data for new timeframe
+                  });
+                }
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTradingForm() {
+    final theme = Theme.of(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+
+    return Form(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Order Type Selector
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: true,
+                label: Text(languageProvider.translate('market_order')),
+              ),
+              ButtonSegment(
+                value: false,
+                label: Text(languageProvider.translate('limit_order')),
+              ),
+            ],
+            selected: {isMarketOrder},
+            onSelectionChanged: (Set<bool> selected) {
+              setState(() => isMarketOrder = selected.first);
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Buy/Sell Selector
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: true,
+                label: Text(languageProvider.translate('buy')),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+              ButtonSegment(
+                value: false,
+                label: Text(languageProvider.translate('sell')),
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+            ],
+            selected: {isBuySelected},
+            onSelectionChanged: (Set<bool> selected) {
+              setState(() => isBuySelected = selected.first);
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Quantity Input
+          TextFormField(
+            controller: _quantityController,
+            decoration: InputDecoration(
+              labelText: languageProvider.translate('quantity'),
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.shopping_cart_outlined),
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: (value) => TradeValidator.validateQuantity(
+              value,
+              1000000, // Example max quantity
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Price Input (for limit orders)
+          if (!isMarketOrder)
+            TextFormField(
+              controller: _priceController,
+              decoration: InputDecoration(
+                labelText: languageProvider.translate('price'),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.attach_money),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (value) => TradeValidator.validatePrice(
+                value,
+                widget.stockData['price'],
+              ),
+            ),
+
+          // Order Summary
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    languageProvider.translate('order_summary'),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSummaryRow(
+                    languageProvider.translate('order_type'),
+                    isMarketOrder ? 'Market' : 'Limit',
+                  ),
+                  _buildSummaryRow(
+                    languageProvider.translate('quantity'),
+                    _quantityController.text,
+                  ),
+                  if (!isMarketOrder)
+                    _buildSummaryRow(
+                      languageProvider.translate('price'),
+                      EthiopianCurrencyFormatter.format(
+                        double.tryParse(_priceController.text) ?? 0,
+                      ),
+                    ),
+                  const Divider(),
+                  _buildSummaryRow(
+                    languageProvider.translate('estimated_total'),
+                    EthiopianCurrencyFormatter.format(
+                      (int.tryParse(_quantityController.text)?.toDouble() ??
+                              0) *
+                          (double.tryParse(_priceController.text) ??
+                              widget.stockData['price']),
+                    ),
+                    isTotal: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Place Order Button
+          ElevatedButton(
+            onPressed: _handlePlaceOrder,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isBuySelected ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: Text(languageProvider.translate(
+              isBuySelected ? 'place_buy_order' : 'place_sell_order',
+            )),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handlePlaceOrder() {
+    // Implement order placement logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          Provider.of<LanguageProvider>(context, listen: false).translate(
+            'order_placed_successfully',
+          ),
+        ),
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _generateMockNews() {
     mockNews = [
       {
-        'title': 'የ${widget.stockData?['name']} አዲስ የንግድ እድሎች',
+        'title': 'የ${widget.stockData['name']} አዲስ የንግድ እድሎች',
         'source': 'Capital Ethiopia',
         'time': '2 ሰዓት በፊት',
         'isPositive': true,
       },
       {
-        'title': 'የገበያው ሁኔታ ግምገማ - ${widget.stockData?['sector']}',
+        'title': 'የገበያው ሁኔታ ግምገማ - ${widget.stockData['sector']}',
         'source': 'Addis Fortune',
         'time': '5 ሰዓት በፊት',
         'isPositive': null,
       },
       {
-        'title': '${widget.stockData?['symbol']} አዳዲስ ኢንቨስትመንቶች',
+        'title': '${widget.stockData['symbol']} አዳዲስ ኢንቨስትመንቶች',
         'source': 'Ethiopian Herald',
         'time': 'ዛሬ',
         'isPositive': true,
@@ -54,30 +315,15 @@ class _StockDetailScreenState extends State<StockDetailScreen>
     ];
   }
 
-  List<Map<String, dynamic>> _generateMockChartData() {
-    final random = math.Random();
-    final List<Map<String, dynamic>> data = [];
-    double price = widget.stockData?['price'] ?? 0.0;
-
-    for (int i = 30; i >= 0; i--) {
-      price += (random.nextDouble() - 0.5) * 5;
-      data.add({
-        'day': i,
-        'price': price,
-      });
-    }
-    return data;
-  }
-
   @override
   void dispose() {
     _tabController.dispose();
     _quantityController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
   void _showTradeBottomSheet(BuildContext context) {
-    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -89,85 +335,10 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             right: 16,
             top: 16,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: true, label: Text('ግዛ')), // Buy
-                        ButtonSegment(value: false, label: Text('ሽጥ')), // Sell
-                      ],
-                      selected: {isBuySelected},
-                      onSelectionChanged: (Set<bool> selected) {
-                        setState(() => isBuySelected = selected.first);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _quantityController,
-                      decoration: const InputDecoration(
-                        labelText: 'መጠን', // Quantity
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('ጠቅላላ',
-                            style: theme.textTheme.labelLarge), // Total
-                        const SizedBox(height: 8),
-                        Text(
-                          EthiopianCurrencyFormatter.format(
-                              (int.tryParse(_quantityController.text)?.toDouble() ?? 0.0) *
-                                  (widget.stockData?['price']?.toDouble() ?? 0.0)),
-                          style: theme.textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isBuySelected
-                          ? 'የግዢ ትዕዛዝ ተከናውኗል'
-                          : 'የሽያጭ ትዕዛዝ ተከናውኗል'),
-                    ),
-                  );
-                },
-                child: Text(isBuySelected ? 'አሁን ግዛ' : 'አሁን ሽጥ'),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
+          child: _buildTradingForm(),
         ),
       ),
     );
-  }
-
-  void _handleTimeframeChange(String timeframe) {
-    setState(() {
-      _generateMockChartData();
-    });
   }
 
   void _showNewsDetail(Map<String, dynamic> news) {
@@ -202,35 +373,28 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isPositiveChange = (widget.stockData?['change'] ?? 0) >= 0;
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isPositiveChange = (widget.stockData['change'] ?? 0) >= 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.stockData?['symbol'] ?? 'Stock Detail'),
+        title: Text(widget.stockData['symbol']),
         actions: [
           IconButton(
             icon: Icon(
               isInWatchlist ? Icons.star : Icons.star_border,
               color: isInWatchlist ? Colors.amber : null,
             ),
-            onPressed: () {
-              setState(() => isInWatchlist = !isInWatchlist);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text(isInWatchlist ? 'ወደ ዝርዝር ተጨምሯል' : 'ከዝርዝር ተወግዷል'),
-                ),
-              );
-            },
+            onPressed: () => setState(() => isInWatchlist = !isInWatchlist),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'አጠቃላይ'), // Overview
-            Tab(text: 'ስታትስቲክስ'), // Stats
-            Tab(text: 'ግራፍ'), // Chart
-            Tab(text: 'ዜና'), // News
+          tabs: [
+            Tab(text: languageProvider.translate('overview')),
+            Tab(text: languageProvider.translate('chart')),
+            Tab(text: languageProvider.translate('analysis')),
+            Tab(text: languageProvider.translate('news')),
           ],
         ),
       ),
@@ -238,32 +402,23 @@ class _StockDetailScreenState extends State<StockDetailScreen>
         controller: _tabController,
         children: [
           _buildOverviewTab(theme, isPositiveChange),
-          _buildStatsTab(theme),
-          _buildChartTab(theme),
+          _buildAdvancedChart(),
+          _buildAnalysisTab(theme),
           _buildNewsTab(theme),
         ],
       ),
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Expanded(
               child: ElevatedButton(
                 onPressed: () => _showTradeBottomSheet(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('ግብይት'), // Trade
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  setState(() => isInWatchlist = !isInWatchlist);
-                },
-                child: Text(isInWatchlist ? 'ከዝርዝር አውጣ' : 'ወደ ዝርዝር ጨምር'),
+                child: Text(languageProvider.translate('trade')),
               ),
             ),
           ],
@@ -278,13 +433,13 @@ class _StockDetailScreenState extends State<StockDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.stockData?['name'] ?? '',
+          Text(widget.stockData['name'] ?? '',
               style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
           Row(
             children: [
               Text(
-                '${widget.stockData?['currency']} ${(widget.stockData?['price'] ?? 0.0).toStringAsFixed(2)}',
+                '${widget.stockData['currency']} ${(widget.stockData['price'] ?? 0.0).toStringAsFixed(2)}',
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(width: 8),
@@ -297,7 +452,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  '${isPositiveChange ? '+' : ''}${(widget.stockData?['change'] ?? 0.0).toStringAsFixed(2)}%',
+                  '${isPositiveChange ? '+' : ''}${(widget.stockData['change'] ?? 0.0).toStringAsFixed(2)}%',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: isPositiveChange ? Colors.green : Colors.red,
                     fontWeight: FontWeight.bold,
@@ -308,77 +463,133 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           ),
           const SizedBox(height: 24),
           _buildInfoCard('Company Details', [
-            _buildInfoRow('Sector', widget.stockData?['sector'] ?? ''),
-            _buildInfoRow('Ownership', widget.stockData?['ownership'] ?? ''),
+            _buildInfoRow('Sector', widget.stockData['sector'] ?? ''),
+            _buildInfoRow('Ownership', widget.stockData['ownership'] ?? ''),
             _buildInfoRow('Market Cap',
-                'ETB ${(widget.stockData?['marketCap'] ?? 0.0).toStringAsFixed(2)}'),
+                'ETB ${(widget.stockData['marketCap'] ?? 0.0).toStringAsFixed(2)}'),
           ]),
           const SizedBox(height: 16),
           _buildInfoCard('Trading Information', [
+            _buildInfoRow('Volume', (widget.stockData['volume'] ?? '').toString()),
             _buildInfoRow(
-                'Volume', widget.stockData?['volume'].toString() ?? ''),
-            _buildInfoRow(
-                'Last Updated', widget.stockData?['lastUpdated'] ?? ''),
+                'Last Updated', widget.stockData['lastUpdated'] ?? ''),
           ]),
         ],
       ),
     );
   }
 
-  Widget _buildStatsTab(ThemeData theme) {
-    return const Center(child: Text('Coming soon...'));
+  Widget _buildAnalysisTab(ThemeData theme) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildMarketDepthCard(theme),
+        const SizedBox(height: 16),
+        _buildTradingVolumeCard(theme),
+      ],
+    );
   }
 
-  Widget _buildChartTab(ThemeData theme) {
-    final chartData = _generateMockChartData();
-    final maxPrice = chartData
-        .map((d) => d['price'] as double)
-        .reduce((a, b) => a > b ? a : b);
-    final minPrice = chartData
-        .map((d) => d['price'] as double)
-        .reduce((a, b) => a < b ? a : b);
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 1.5,
-            child: CustomPaint(
-              painter: ChartPainter(
-                data: chartData,
-                maxPrice: maxPrice,
-                minPrice: minPrice,
-                color: theme.colorScheme.primary,
+  Widget _buildMarketDepthCard(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Market Depth', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: SfCartesianChart(
+                primaryXAxis: NumericAxis(),
+                primaryYAxis: NumericAxis(),
+                series: _getMarketDepthSeries(),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildTimeFrameButton(theme, '1ቀን', true),
-              _buildTimeFrameButton(theme, '1ሳምንት', false),
-              _buildTimeFrameButton(theme, '1ወር', false),
-              _buildTimeFrameButton(theme, '3ወር', false),
-              _buildTimeFrameButton(theme, '1አመት', false),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTimeFrameButton(ThemeData theme, String text, bool isSelected) {
-    return ChoiceChip(
-      label: Text(text),
-      selected: isSelected,
-      onSelected: (bool selected) {
-        if (selected) {
-          _handleTimeframeChange(text);
-        }
-      },
+  List<CartesianSeries> _getMarketDepthSeries() {
+    final random = math.Random();
+    final basePrice = widget.stockData['price'] as double;
+
+    // Generate bid data with explicit double type
+    final bidData = List<MapEntry<double, double>>.generate(10, (index) {
+      final price = basePrice * (1 - index * 0.001);
+      final volume = 1000.0 + random.nextDouble() * 1000;
+      return MapEntry(price, volume);
+    });
+
+    // Generate ask data with explicit double type
+    final askData = List<MapEntry<double, double>>.generate(10, (index) {
+      final price = basePrice * (1 + index * 0.001);
+      final volume = 1000.0 + random.nextDouble() * 1000;
+      return MapEntry(price, volume);
+    });
+
+    return [
+      LineSeries<MapEntry<double, double>, double>(
+        dataSource: bidData,
+        xValueMapper: (MapEntry<double, double> data, _) => data.key,
+        yValueMapper: (MapEntry<double, double> data, _) => data.value,
+        color: Colors.green,
+      ),
+      LineSeries<MapEntry<double, double>, double>(
+        dataSource: askData,
+        xValueMapper: (MapEntry<double, double> data, _) => data.key,
+        yValueMapper: (MapEntry<double, double> data, _) => data.value,
+        color: Colors.red,
+      ),
+    ];
+  }
+
+  Widget _buildTradingVolumeCard(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Trading Volume', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: SfCartesianChart(
+                primaryXAxis: DateTimeAxis(),
+                primaryYAxis: NumericAxis(),
+                series: _getVolumeSeries(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  List<CartesianSeries> _getVolumeSeries() {
+    final random = math.Random();
+    final now = DateTime.now();
+
+    final volumeData = List.generate(30, (index) {
+      final date = now.subtract(Duration(days: 29 - index));
+      return MapEntry<DateTime, double>(
+        date,
+        10000 + random.nextDouble() * 20000,
+      );
+    });
+
+    return [
+      ColumnSeries<MapEntry<DateTime, double>, DateTime>(
+        dataSource: volumeData,
+        xValueMapper: (MapEntry<DateTime, double> data, _) => data.key,
+        yValueMapper: (MapEntry<DateTime, double> data, _) => data.value,
+        color: Theme.of(context).primaryColor.withOpacity(0.5),
+      ),
+    ];
   }
 
   Widget _buildNewsTab(ThemeData theme) {
@@ -442,50 +653,4 @@ class _StockDetailScreenState extends State<StockDetailScreen>
       ),
     );
   }
-}
-
-class ChartPainter extends CustomPainter {
-  final List<Map<String, dynamic>> data;
-  final double maxPrice;
-  final double minPrice;
-  final Color color;
-
-  ChartPainter({
-    required this.data,
-    required this.maxPrice,
-    required this.minPrice,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    final path = Path();
-    final paddingTop = size.height * 0.1;
-    final paddingBottom = size.height * 0.1;
-    final availableHeight = size.height - paddingTop - paddingBottom;
-    final xStep = size.width / (data.length - 1);
-
-    for (var i = 0; i < data.length; i++) {
-      final price = (data[i]['price'] as num).toDouble(); // cast num to double
-      final normalizedY = 1 - ((price - minPrice) / (maxPrice - minPrice));
-      final x = i * xStep;
-      final y = normalizedY * availableHeight + paddingTop;
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(ChartPainter oldDelegate) => true;
 }

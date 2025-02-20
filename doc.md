@@ -311,6 +311,49 @@ graph TD
   - Transaction history tracking.
   - Gain/loss calculations in Ethiopian Birr.
 
+### 5.12 Advanced Trading Features
+- **Description:**  
+  - Professional-grade trading interface with advanced charting capabilities.
+  - Comprehensive technical analysis tools and indicators.
+- **Key Components:**  
+  - Advanced candlestick charts with multiple timeframes
+  - Technical indicators (RSI, MACD, Bollinger Bands)
+  - Market depth visualization
+  - Volume analysis tools
+  - Real-time trade execution interface
+
+### 5.13 Enhanced Market Analysis
+- **Description:**  
+  - Sophisticated market analysis tools for informed trading decisions.
+- **Key Features:**
+  - Professional charting library integration
+  - Multiple chart types (candlestick, line, area)
+  - Advanced technical indicators
+  - Market depth visualization
+  - Volume profile analysis
+  - Price action patterns recognition
+
+### 5.14 Trading Interface Improvements
+- **Description:**  
+  - Modernized trading interface with professional features.
+- **Key Components:**
+  - Market/Limit order support
+  - Advanced order types
+  - Real-time price updates
+  - Order book visualization
+  - Trade confirmation system
+  - Position sizing calculator
+
+### 5.15 Theme and UI Enhancements
+- **Description:**  
+  - Professional trading-focused theme system with specialized color schemes.
+- **Key Features:**
+  - Dedicated chart themes for both light and dark modes
+  - Trading-specific color palettes for indicators
+  - Consistent visual hierarchy for market data
+  - Enhanced accessibility features
+  - Responsive design for all screen sizes
+
 # 6. Next Steps & Future Enhancements
 
 ### 6.1 Immediate Priorities

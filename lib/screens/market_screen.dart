@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:intl/intl.dart';
 import '../data/ethio_data.dart';
 import '../utils/ethiopian_utils.dart';
+import '../providers/language_provider.dart';
 import 'stock_detail_screen.dart';
 import 'dart:async';
 
@@ -20,16 +25,24 @@ class _MarketScreenState extends State<MarketScreen>
   late Timer _marketStatusTimer;
   bool _isMarketOpen = false;
   String _marketStatus = '';
+  String _selectedTimeframe = '1D';
+  late ZoomPanBehavior _zoomPanBehavior;
 
   @override
   void initState() {
     super.initState();
     ethioMarketData = EthioData.generateMockEthioMarketData();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _updateMarketStatus();
     _marketStatusTimer = Timer.periodic(
       const Duration(minutes: 1),
       (_) => _updateMarketStatus(),
+    );
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enableSelectionZooming: true,
+      enablePanning: true,
     );
   }
 
@@ -58,15 +71,210 @@ class _MarketScreenState extends State<MarketScreen>
     }).toList();
   }
 
+  Widget _buildMarketIndexChart(ThemeData theme) {
+    return Card(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Market Index', style: theme.textTheme.titleLarge),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: '1D', label: Text('1D')),
+                    ButtonSegment(value: '1W', label: Text('1W')),
+                    ButtonSegment(value: '1M', label: Text('1M')),
+                    ButtonSegment(value: '1Y', label: Text('1Y')),
+                  ],
+                  selected: {_selectedTimeframe},
+                  onSelectionChanged: (Set<String> selection) {
+                    setState(() => _selectedTimeframe = selection.first);
+                  },
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 300,
+            child: SfCartesianChart(
+              zoomPanBehavior: _zoomPanBehavior,
+              trackballBehavior: TrackballBehavior(
+                enable: true,
+                tooltipSettings: const InteractiveTooltip(enable: true),
+              ),
+              primaryXAxis: DateTimeAxis(
+                majorGridLines: const MajorGridLines(width: 0),
+                dateFormat: _selectedTimeframe == '1D'
+                    ? DateFormat.Hm()
+                    : DateFormat.MMMd(),
+              ),
+              primaryYAxis: NumericAxis(
+                opposedPosition: true,
+                majorGridLines:
+                    const MajorGridLines(width: 0.5, dashArray: [5, 5]),
+              ),
+              series: <ChartSeries>[
+                // Area Series for volume
+                AreaSeries<Map<String, dynamic>, DateTime>(
+                  dataSource: _getChartData(),
+                  xValueMapper: (Map<String, dynamic> data, _) =>
+                      data['timestamp'],
+                  yValueMapper: (Map<String, dynamic> data, _) =>
+                      data['volume'],
+                  opacity: 0.3,
+                  name: 'Volume',
+                ),
+                // Line Series for price
+                LineSeries<Map<String, dynamic>, DateTime>(
+                  dataSource: _getChartData(),
+                  xValueMapper: (Map<String, dynamic> data, _) =>
+                      data['timestamp'],
+                  yValueMapper: (Map<String, dynamic> data, _) => data['value'],
+                  name: 'Market Index',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectorPerformanceChart(ThemeData theme) {
+    final sectorWeights = EthioData.getSectorWeights(ethioMarketData);
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child:
+                Text('Sector Performance', style: theme.textTheme.titleLarge),
+          ),
+          SizedBox(
+            height: 300,
+            child: SfCircularChart(
+              legend:
+                  const Legend(isVisible: true, position: LegendPosition.right),
+              series: <CircularSeries>[
+                DoughnutSeries<MapEntry<String, double>, String>(
+                  dataSource: sectorWeights.entries.toList(),
+                  xValueMapper: (MapEntry<String, double> data, _) => data.key,
+                  yValueMapper: (MapEntry<String, double> data, _) =>
+                      data.value,
+                  dataLabelSettings: const DataLabelSettings(
+                    isVisible: true,
+                    labelPosition: ChartDataLabelPosition.outside,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMarketDepthChart(ThemeData theme) {
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text('Market Depth', style: theme.textTheme.titleLarge),
+          ),
+          SizedBox(
+            height: 300,
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: true),
+                titlesData: const FlTitlesData(show: true),
+                borderData: FlBorderData(show: true),
+                lineBarsData: [
+                  // Bid Line
+                  LineChartBarData(
+                    spots: _generateBidLine(),
+                    isCurved: true,
+                    color: Colors.green,
+                    barWidth: 2,
+                    dotData: const FlDotData(show: false),
+                  ),
+                  // Ask Line
+                  LineChartBarData(
+                    spots: _generateAskLine(),
+                    isCurved: true,
+                    color: Colors.red,
+                    barWidth: 2,
+                    dotData: const FlDotData(show: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<FlSpot> _generateBidLine() {
+    // Generate mock bid data
+    return List.generate(10, (index) {
+      return FlSpot(index.toDouble(), (100 - index * 2).toDouble());
+    });
+  }
+
+  List<FlSpot> _generateAskLine() {
+    // Generate mock ask data
+    return List.generate(10, (index) {
+      return FlSpot(index.toDouble(), (100 + index * 2).toDouble());
+    });
+  }
+
+  List<Map<String, dynamic>> _getChartData() {
+    final now = DateTime.now();
+    // Generate mock time series data based on selected timeframe
+    switch (_selectedTimeframe) {
+      case '1D':
+        return List.generate(24, (index) {
+          return {
+            'timestamp': now.subtract(Duration(hours: 24 - index)),
+            'value': 1000 + (index * 5) + (index % 3 == 0 ? 10 : -5),
+            'volume': 10000 + (index * 1000) * (index % 2 == 0 ? 1.2 : 0.8),
+          };
+        });
+      case '1W':
+        return List.generate(7, (index) {
+          return {
+            'timestamp': now.subtract(Duration(days: 7 - index)),
+            'value': 1000 + (index * 20) + (index % 2 == 0 ? 15 : -10),
+            'volume': 50000 + (index * 5000) * (index % 2 == 0 ? 1.3 : 0.7),
+          };
+        });
+      default:
+        return List.generate(30, (index) {
+          return {
+            'timestamp': now.subtract(Duration(days: 30 - index)),
+            'value': 1000 + (index * 10) + (index % 4 == 0 ? 25 : -15),
+            'volume': 100000 + (index * 10000) * (index % 3 == 0 ? 1.4 : 0.6),
+          };
+        });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ethiopianDate = EthiopianCalendar.getCurrentDate();
     final Color marketStatusColor = _isMarketOpen ? Colors.green : Colors.grey;
+    final languageProvider = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ገበያ'), // Market in Amharic
+        title: Text(languageProvider.translate('market')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(160),
           child: Column(
@@ -137,9 +345,10 @@ class _MarketScreenState extends State<MarketScreen>
               ),
               TabBar(
                 controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Market Data'),
-                  Tab(text: 'Performance'),
+                tabs: [
+                  Tab(text: languageProvider.translate('market_data')),
+                  Tab(text: languageProvider.translate('performance')),
+                  Tab(text: languageProvider.translate('market_depth')),
                 ],
               ),
             ],
@@ -150,7 +359,32 @@ class _MarketScreenState extends State<MarketScreen>
         controller: _tabController,
         children: [
           _buildMarketDataTab(theme),
-          _buildPerformanceTab(theme),
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildMarketIndexChart(theme),
+                    const SizedBox(height: 16),
+                    _buildSectorPerformanceChart(theme),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildMarketDepthChart(theme),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -217,65 +451,6 @@ class _MarketScreenState extends State<MarketScreen>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildPerformanceTab(ThemeData theme) {
-    final topGainers = List<Map<String, dynamic>>.from(ethioMarketData)
-      ..sort(
-          (a, b) => (b['change'] as double).compareTo(a['change'] as double));
-    final topLosers = List<Map<String, dynamic>>.from(ethioMarketData)
-      ..sort(
-          (a, b) => (a['change'] as double).compareTo(b['change'] as double));
-
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Top Gainers', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            _buildPerformanceList(topGainers.take(5).toList(), theme),
-            const SizedBox(height: 24),
-            Text('Top Losers', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            _buildPerformanceList(topLosers.take(5).toList(), theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPerformanceList(
-      List<Map<String, dynamic>> data, ThemeData theme) {
-    return Column(
-      children: data.map((item) {
-        final isPositiveChange = item['change'] >= 0;
-        return Card(
-          child: ListTile(
-            title: Text(item['symbol']),
-            subtitle: Text(item['sector']),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${item['currency']} ${item['price'].toStringAsFixed(2)}',
-                  style: theme.textTheme.bodyLarge,
-                ),
-                Text(
-                  '${isPositiveChange ? '+' : ''}${item['change'].toStringAsFixed(2)}%',
-                  style: TextStyle(
-                    color: isPositiveChange ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }

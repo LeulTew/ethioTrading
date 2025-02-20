@@ -5,151 +5,203 @@ library;
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  /// Returns a fully configured custom light theme.
+  // Light Theme Colors
+  static const Color _lightPrimary = Color(0xFF1B5E20);
+  static const Color _lightSecondary = Color(0xFF2E7D32);
+  static const Color _lightBackground = Color(0xFFF5F5F5);
+  static const Color _lightSurface = Colors.white;
+  static const Color _lightError = Color(0xFFB00020);
+
+  // Dark Theme Colors
+  static const Color _darkPrimary = Color(0xFF81C784);
+  static const Color _darkSecondary = Color(0xFF82B086);
+  static const Color _darkBackground = Color(0xFF121212);
+  static const Color _darkSurface = Color(0xFF1E1E1E);
+  static const Color _darkError = Color(0xFFCF6679);
+
+  // Trading Colors
+  static const Color bullish = Color(0xFF00C853);
+  static const Color bearish = Color(0xFFD50000);
+  static const Color neutral = Color(0xFF757575);
+
+  // Chart Colors
+  static const List<Color> chartColors = [
+    Color(0xFF2196F3), // Blue
+    Color(0xFFFFA726), // Orange
+    Color(0xFF66BB6A), // Green
+    Color(0xFFEF5350), // Red
+    Color(0xFF8E24AA), // Purple
+    Color(0xFF26A69A), // Teal
+  ];
+
+  // Technical Indicator Colors
+  static const Color macdLine = Color(0xFF2196F3);
+  static const Color signalLine = Color(0xFFFFA726);
+  static const Color histogram = Color(0xFF66BB6A);
+  static const Color rsiLine = Color(0xFF26A69A);
+  static const Color bollingerBands = Color(0xFF8E24AA);
+  static const Color movingAverage = Color(0xFFEF5350);
+
   static ThemeData lightTheme() {
-    final base = ThemeData.light();
-    return base.copyWith(
+    return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: Colors.blue,
+      colorScheme: const ColorScheme.light(
+        primary: _lightPrimary,
+        secondary: _lightSecondary,
+        surface: _lightSurface,
+        error: _lightError,
+      ),
+      scaffoldBackgroundColor: _lightBackground,
+      cardTheme: const CardTheme(
+        elevation: 2,
+        margin: EdgeInsets.zero,
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.blue,
         elevation: 0,
-        titleTextStyle: TextStyle(
-          fontSize: 20.0,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+        centerTitle: true,
+        backgroundColor: _lightBackground,
+        foregroundColor: _lightPrimary,
+      ),
+      tabBarTheme: const TabBarTheme(
+        labelColor: _lightPrimary,
+        unselectedLabelColor: Colors.grey,
+        indicatorSize: TabBarIndicatorSize.label,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _lightPrimary, width: 2),
         ),
       ),
-      textTheme: _lightTextTheme(base.textTheme),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue, // Background color
-          foregroundColor: Colors.white, // Text color
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.blue),
-        ),
-        labelStyle: TextStyle(color: Colors.blue),
-      ),
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.blue.shade100,
-        disabledColor: Colors.grey.shade300,
-        selectedColor: Colors.blue.shade300,
-        secondarySelectedColor: Colors.blue.shade300,
-        padding: const EdgeInsets.all(8),
-        labelStyle: const TextStyle(color: Colors.black),
-        secondaryLabelStyle: const TextStyle(color: Colors.white),
-        brightness: Brightness.light,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        side: BorderSide.none,
       ),
-      sliderTheme: SliderThemeData(
-        activeTrackColor: Colors.blue,
-        inactiveTrackColor: Colors.blue.shade100,
-        thumbColor: Colors.blueAccent,
-        overlayColor: Colors.blue.withAlpha(51),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 24,
+        thickness: 1,
       ),
     );
   }
 
-  /// Returns a fully configured custom dark theme.
   static ThemeData darkTheme() {
-    final base = ThemeData.dark();
-    return base.copyWith(
+    return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: Colors.blueGrey,
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.blueGrey.shade900,
+      colorScheme: const ColorScheme.dark(
+        primary: _darkPrimary,
+        secondary: _darkSecondary,
+        surface: _darkSurface,
+        error: _darkError,
+      ),
+      scaffoldBackgroundColor: _darkBackground,
+      cardTheme: const CardTheme(
+        elevation: 4,
+        margin: EdgeInsets.zero,
+        color: _darkSurface,
+      ),
+      appBarTheme: const AppBarTheme(
         elevation: 0,
-        titleTextStyle: const TextStyle(
-          fontSize: 20.0,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+        centerTitle: true,
+        backgroundColor: _darkBackground,
+        foregroundColor: _darkPrimary,
+      ),
+      tabBarTheme: const TabBarTheme(
+        labelColor: _darkPrimary,
+        unselectedLabelColor: Colors.grey,
+        indicatorSize: TabBarIndicatorSize.label,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _darkPrimary, width: 2),
         ),
       ),
-      textTheme: _darkTextTheme(base.textTheme),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueGrey, // Background color
-          foregroundColor: Colors.white, // Text color
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+          elevation: 4,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.blueGrey),
-        ),
-        labelStyle: TextStyle(color: Colors.blueGrey),
-      ),
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.blueGrey.shade800,
-        disabledColor: Colors.grey.shade700,
-        selectedColor: Colors.blueGrey.shade600,
-        secondarySelectedColor: Colors.blueGrey.shade600,
-        padding: const EdgeInsets.all(8),
-        labelStyle: const TextStyle(color: Colors.white),
-        secondaryLabelStyle: const TextStyle(color: Colors.white),
-        brightness: Brightness.dark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        side: BorderSide.none,
       ),
-      sliderTheme: SliderThemeData(
-        activeTrackColor: Colors.blueGrey,
-        inactiveTrackColor: Colors.blueGrey.shade700,
-        thumbColor: Colors.blueAccent,
-        overlayColor: Colors.blueGrey.withAlpha(51),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 24,
+        thickness: 1,
       ),
     );
   }
 
-  /// Custom text theme for light mode.
-  static TextTheme _lightTextTheme(TextTheme base) {
-    return base.copyWith(
-      displayLarge: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
-      displayMedium: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
-      displaySmall: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
-      headlineLarge: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.black87),
-      headlineMedium: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-      headlineSmall: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
-      titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
-      titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
-      titleSmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87),
-      bodyLarge: const TextStyle(fontSize: 16, color: Colors.black87),
-      bodyMedium: const TextStyle(fontSize: 14, color: Colors.black87),
-      bodySmall: const TextStyle(fontSize: 12, color: Colors.black54),
-      labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black),
-      labelMedium: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black),
-      labelSmall: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.black),
+  // Chart Theme
+  static ChartThemeData chartTheme(bool isDarkMode) {
+    return ChartThemeData(
+      backgroundColor: isDarkMode ? _darkBackground : _lightBackground,
+      gridLineColor: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+      axisLineColor: isDarkMode ? Colors.grey[700]! : Colors.grey[400]!,
+      crosshairColor: isDarkMode ? Colors.white70 : Colors.black87,
+      labelStyle: TextStyle(
+        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+        fontSize: 12,
+      ),
     );
   }
+}
 
-  /// Custom text theme for dark mode.
-  static TextTheme _darkTextTheme(TextTheme base) {
-    return base.copyWith(
-      displayLarge: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-      displayMedium: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white70),
-      displaySmall: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white70),
-      headlineLarge: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white70),
-      headlineMedium: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white70),
-      headlineSmall: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white70),
-      titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white70),
-      titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
-      titleSmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white70),
-      bodyLarge: const TextStyle(fontSize: 16, color: Colors.white70),
-      bodyMedium: const TextStyle(fontSize: 14, color: Colors.white70),
-      bodySmall: const TextStyle(fontSize: 12, color: Colors.white60),
-      labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
-      labelMedium: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
-      labelSmall: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.white),
-    );
-  }
+class ChartThemeData {
+  final Color backgroundColor;
+  final Color gridLineColor;
+  final Color axisLineColor;
+  final Color crosshairColor;
+  final TextStyle labelStyle;
+
+  const ChartThemeData({
+    required this.backgroundColor,
+    required this.gridLineColor,
+    required this.axisLineColor,
+    required this.crosshairColor,
+    required this.labelStyle,
+  });
 }

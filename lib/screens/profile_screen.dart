@@ -1,206 +1,487 @@
 import 'package:flutter/material.dart';
-import 'package:ethio_trading_app/models/user_profile.dart';
-import 'package:ethio_trading_app/data/mock_data.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
+import '../utils/ethiopian_utils.dart';
 
-// ProfileScreen is a StatefulWidget that displays and allows the user to edit their profile information.
 class ProfileScreen extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
 
-  // Constructor for ProfileScreen. Requires a callback function to change the theme.
   const ProfileScreen({super.key, required this.onThemeChanged});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-// _ProfileScreenState is the state class for ProfileScreen.
-class _ProfileScreenState extends State<ProfileScreen> {
-  // Controllers for the username and email text fields.
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-
-  // userProfile will hold the current user profile data.
-  late UserProfile userProfile;
-  // newUserProfile will hold the user data when it is changed.
-  late UserProfile newUserProfile;
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _bankAccountController = TextEditingController();
+  bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the userProfile with mock data.
-    userProfile = generateMockUserProfile();
-    // Initialize the newUserProfile with the current user profile.
-    newUserProfile = UserProfile(
-      userId: userProfile.userId,
-      username: userProfile.username,
-      email: userProfile.email,
-      profilePictureUrl: userProfile.profilePictureUrl,
+    _tabController = TabController(length: 4, vsync: this);
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userData = authProvider.userData;
+    if (userData != null) {
+      _usernameController.text = userData['username'] ?? '';
+      _emailController.text = userData['email'] ?? '';
+      _phoneController.text = userData['phoneNumber'] ?? '';
+      _addressController.text = userData['address'] ?? '';
+      _bankAccountController.text = userData['bankAccountNumber'] ?? '';
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    try {
+      await authProvider.updateProfile({
+        'username': _usernameController.text,
+        'phoneNumber': _phoneController.text,
+        'address': _addressController.text,
+        'bankAccountNumber': _bankAccountController.text,
+      });
+
+      setState(() => _isEditing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildProfileTab() {
+    final theme = Theme.of(context);
+    final userData = Provider.of<AuthProvider>(context).userData;
+    final tradingLevel = userData?['tradingLevel'] ?? 'beginner';
+    final isVerified = userData?['isVerified'] ?? false;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundImage: NetworkImage(
+                      userData?['profilePictureUrl'] ??
+                          'https://ui-avatars.com/api/?name=${_usernameController.text}',
+                    ),
+                  ),
+                  if (_isEditing)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                        backgroundColor: theme.primaryColor,
+                        radius: 18,
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, size: 18),
+                          onPressed: () {/* Implement photo upload */},
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Trading Level Badge
+            Center(
+              child: Chip(
+                avatar: Icon(
+                  tradingLevel == 'advanced'
+                      ? Icons.workspace_premium
+                      : tradingLevel == 'intermediate'
+                          ? Icons.trending_up
+                          : Icons.school,
+                  color: theme.primaryColor,
+                ),
+                label: Text(
+                  tradingLevel.toUpperCase(),
+                  style: theme.textTheme.labelLarge,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Verification Status
+            ListTile(
+              leading: Icon(
+                isVerified ? Icons.verified : Icons.warning,
+                color: isVerified ? Colors.green : Colors.orange,
+              ),
+              title: Text(
+                  isVerified ? 'Verified Account' : 'Verification Required'),
+              subtitle: Text(isVerified
+                  ? 'Your account is fully verified'
+                  : 'Complete verification to unlock full trading features'),
+              trailing: isVerified
+                  ? null
+                  : TextButton(
+                      onPressed: () {/* Implement verification flow */},
+                      child: const Text('Verify Now'),
+                    ),
+            ),
+            const Divider(),
+
+            // Profile Fields
+            TextFormField(
+              controller: _usernameController,
+              decoration: InputDecoration(
+                labelText: 'Username',
+                enabled: _isEditing,
+                prefixIcon: const Icon(Icons.person),
+              ),
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Username is required' : null,
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _emailController,
+              enabled: false, // Email changes require verification
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _phoneController,
+              decoration: InputDecoration(
+                labelText: 'Phone Number',
+                enabled: _isEditing,
+                prefixIcon: const Icon(Icons.phone),
+              ),
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Phone number is required' : null,
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _addressController,
+              decoration: InputDecoration(
+                labelText: 'Address',
+                enabled: _isEditing,
+                prefixIcon: const Icon(Icons.location_on),
+              ),
+              maxLines: 2,
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Address is required' : null,
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _bankAccountController,
+              decoration: InputDecoration(
+                labelText: 'Bank Account Number',
+                enabled: _isEditing,
+                prefixIcon: const Icon(Icons.account_balance),
+              ),
+              validator: (value) => value?.isEmpty == true
+                  ? 'Bank account number is required'
+                  : null,
+            ),
+            const SizedBox(height: 24),
+
+            if (!_isEditing)
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () => setState(() => _isEditing = true),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit Profile'),
+                ),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => setState(() => _isEditing = false),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: _saveProfile,
+                    child: const Text('Save Changes'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
-
-    // Set the initial text for the username controller.
-    _usernameController.text = userProfile.username;
-    // Set the initial text for the email controller.
-    _emailController.text = userProfile.email;
   }
 
-  // Dispose the controllers when the widget is removed from the widget tree.
-  @override
-  void dispose() {
-    // Dispose the username controller.
-    _usernameController.dispose();
-    // Dispose the email controller.
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  void _saveChanges() {
-    setState(() {
-      userProfile = UserProfile(
-          userId: userProfile.userId,
-          username: newUserProfile.username,
-          email: newUserProfile.email,
-          profilePictureUrl: userProfile.profilePictureUrl);
-      // Update the username controller text.
-      _usernameController.text = newUserProfile.username;
-      // Update the email controller text.
-      _emailController.text = newUserProfile.email;
-    });
-    // Show a snackbar to indicate that the profile has been updated.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated!')),
-    );
-  }
-
-  // The build method describes the part of the user interface represented by this widget.
-  // This method is called whenever the widget needs to rebuild.
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildPreferencesTab() {
     final languageProvider = context.watch<LanguageProvider>();
 
-    return Scaffold(
-        appBar: AppBar(
-          title: Text(languageProvider.translate('profile')),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Language',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                RadioListTile<String>(
+                  title: const Text('English'),
+                  value: 'en',
+                  groupValue: languageProvider.currentLanguage,
+                  onChanged: (value) =>
+                      languageProvider.setLanguage(value ?? 'en'),
+                ),
+                RadioListTile<String>(
+                  title: const Text('አማርኛ'),
+                  value: 'am',
+                  groupValue: languageProvider.currentLanguage,
+                  onChanged: (value) =>
+                      languageProvider.setLanguage(value ?? 'am'),
+                ),
+              ],
+            ),
+          ),
         ),
-        body: Padding(
-          // Add padding to the body.
-          padding: const EdgeInsets.all(16.0),
-          child: ListView(
-            children: <Widget>[
-              // Display User Data
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: Text(userProfile.username),
-                subtitle: Text(userProfile.email),
-              ),
-              // Add spacing between the user data and the username input field.
-              const SizedBox(height: 20),
-              // Username Input
-              TextField(
-                // Set the controller for the username input field.
-                controller: _usernameController,
-                // Customize the decoration of the username input field.
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Theme',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                // Update the user profile when the username changes.
-                onChanged: (value) {
-                  setState(() {
-                    newUserProfile = UserProfile(
-                        userId: newUserProfile.userId,
-                        username: value,
-                        email: newUserProfile.email,
-                        profilePictureUrl: newUserProfile.profilePictureUrl);
-                  });
-                },
-              ),
-              // Add spacing between the username input field and the email input field.
-              const SizedBox(height: 20),
-              // Email Input
-              TextField(
-                // Set the controller for the email input field.
-                controller: _emailController,
-                // Customize the decoration of the email input field.
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                ListTile(
+                  leading: const Icon(Icons.light_mode),
+                  title: const Text('Light Mode'),
+                  onTap: () => widget.onThemeChanged(ThemeMode.light),
                 ),
-                // Update the user profile when the email changes.
-                onChanged: (value) {
-                  setState(() {
-                    newUserProfile = UserProfile(
-                        userId: newUserProfile.userId,
-                        username: newUserProfile.username,
-                        email: value,
-                        profilePictureUrl: newUserProfile.profilePictureUrl);
-                  });
-                },
-              ),
-              // Add spacing between the email input field and the save changes button.
-              const SizedBox(height: 20),
-              // Save Changes Button
-              ElevatedButton(
-                // Save the changes when the button is pressed.
-                onPressed: _saveChanges,
-                child: const Text('Save Changes'),
-              ),
-              // Add spacing between the save changes button and the language selection.
-              const SizedBox(height: 20),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        languageProvider.translate('language'),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      RadioListTile<String>(
-                        title: const Text('English'),
-                        value: 'en',
-                        groupValue: languageProvider.currentLanguage,
-                        onChanged: (value) {
-                          if (value != null) {
-                            languageProvider.setLanguage(value);
-                          }
-                        },
-                      ),
-                      RadioListTile<String>(
-                        title: const Text('አማርኛ'),
-                        value: 'am',
-                        groupValue: languageProvider.currentLanguage,
-                        onChanged: (value) {
-                          if (value != null) {
-                            languageProvider.setLanguage(value);
-                          }
-                        },
-                      ),
-                    ],
+                ListTile(
+                  leading: const Icon(Icons.dark_mode),
+                  title: const Text('Dark Mode'),
+                  onTap: () => widget.onThemeChanged(ThemeMode.dark),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings_brightness),
+                  title: const Text('System Default'),
+                  onTap: () => widget.onThemeChanged(ThemeMode.system),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTradingLimitsTab() {
+    final userData = Provider.of<AuthProvider>(context).userData;
+    final tradingLevel = userData?['tradingLevel'] ?? 'beginner';
+    final availableBalance = userData?['availableBalance'] ?? 0.0;
+
+    String limit;
+    switch (tradingLevel) {
+      case 'advanced':
+        limit = '1,000,000';
+        break;
+      case 'intermediate':
+        limit = '500,000';
+        break;
+      default:
+        limit = '100,000';
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Trading Level Overview'),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Current Level'),
+                  trailing: Text(
+                    tradingLevel.toUpperCase(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-              ),
-              // Add spacing between the language selection and the theme change buttons.
-              const SizedBox(height: 20),
-              // Theme change buttons
-              ElevatedButton(
-                onPressed: () => widget.onThemeChanged(ThemeMode.light),
-                child: const Text('Light Mode'),
-              ),
-              ElevatedButton(
-                // Change the theme to dark mode when the button is pressed.
-                onPressed: () => widget.onThemeChanged(ThemeMode.dark),
-                child: const Text('Dark Mode'),
-              ),
-              ElevatedButton(
-                onPressed: () => widget.onThemeChanged(ThemeMode.system),
-                child: const Text('System Default'),
-              ),
-            ],
+                ListTile(
+                  title: const Text('Daily Trading Limit'),
+                  trailing: Text(
+                    'ETB $limit',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Available Balance'),
+                  trailing: Text(
+                    EthiopianCurrencyFormatter.format(availableBalance),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ));
+        ),
+        if (tradingLevel != 'advanced')
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text('Upgrade Your Trading Level'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {/* Implement upgrade flow */},
+                    child: const Text('Request Upgrade'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSecurityTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Security Settings'),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.password),
+                  title: const Text('Change Password'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {/* Implement password change */},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.security),
+                  title: const Text('Two-Factor Authentication'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {/* Implement 2FA */},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.phone_android),
+                  title: const Text('Trusted Devices'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {/* Implement device management */},
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Activity Log'),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text('Login History'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {/* Implement login history */},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.notifications),
+                  title: const Text('Security Notifications'),
+                  trailing: Switch(
+                    value: true,
+                    onChanged: (value) {/* Implement notification toggle */},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'Profile'),
+            Tab(text: 'Preferences'),
+            Tab(text: 'Trading Limits'),
+            Tab(text: 'Security'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildProfileTab(),
+          _buildPreferencesTab(),
+          _buildTradingLimitsTab(),
+          _buildSecurityTab(),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _bankAccountController.dispose();
+    super.dispose();
   }
 }
