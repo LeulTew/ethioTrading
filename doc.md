@@ -106,6 +106,117 @@ The Ethio Trading App is built on a modular, scalable architecture that ensures 
 - **Error Handling:**  
   - Every modification is subjected to rigorous error checking and problem verification to ensure stability.
 
+### 4.5 State Management Architecture
+- **Provider Pattern Implementation:**  
+  - Centralized state management using the Provider pattern.
+  - Key providers:
+    - `AuthProvider`: Manages authentication state and user data
+    - `LanguageProvider`: Handles localization and translations
+  - Benefits:
+    - Clear separation of concerns
+    - Efficient widget rebuilds
+    - Testable business logic
+
+### 4.6 Data Flow Architecture
+```mermaid
+graph TD
+    A[UI Layer] --> B[Provider Layer]
+    B --> C[Service Layer]
+    C --> D[Firebase/External APIs]
+    E[Ethiopian Market Data] --> C
+    F[Local Storage] --> C
+```
+
+### 4.7 Validation Framework
+- **Input Validation:**  
+  - Centralized validation logic in `lib/utils/validators.dart`
+  - Custom validators for:
+    - Email format
+    - Password strength
+    - Trading amounts
+    - Ethiopian-specific data formats
+- **Error Handling:**  
+  - Hierarchical error propagation
+  - User-friendly error messages in both English and Amharic
+  - Graceful degradation during network issues
+
+### 4.8 Market Data Architecture
+- **Real-time Updates:**  
+  - Efficient market data streaming
+  - Optimized for Ethiopian market hours
+  - Smart caching mechanisms
+- **Data Models:**  
+  - Strongly typed models for:
+    - Assets
+    - User Profiles
+    - Market Data
+    - Transaction History
+- **Local Storage:**  
+  - Persistent storage for offline functionality
+  - Secure credential management
+  - Cache invalidation strategies
+
+### 4.9 Firebase Integration Architecture
+- **Authentication Flow:**
+  ```mermaid
+  sequenceDiagram
+    participant User
+    participant App
+    participant AuthProvider
+    participant FirebaseAuth
+    participant Firestore
+    
+    User->>App: Login Request
+    App->>AuthProvider: Authenticate
+    AuthProvider->>FirebaseAuth: signInWithEmailAndPassword
+    FirebaseAuth-->>AuthProvider: UserCredential
+    AuthProvider->>Firestore: Fetch User Profile
+    Firestore-->>App: User Data
+    App->>User: Login Success
+  ```
+
+- **Real-time Data Architecture:**
+  - Collection Structure:
+    ```
+    firestore/
+    ├── users/
+    │   └── {uid}/
+    │       ├── profile
+    │       ├── portfolio
+    │       └── watchlist
+    ├── market_data/
+    │   └── {symbol}/
+    │       ├── price_history
+    │       ├── company_info
+    │       └── trading_volume
+    └── transactions/
+        └── {transaction_id}/
+    ```
+  - Security Rules:
+    - Role-based access control
+    - Rate limiting for API calls
+    - Data validation at database level
+
+### 4.10 Ethiopian Market Integration
+- **Market Hours Handling:**
+  ```mermaid
+  graph TD
+    A[Time Check] --> B{Is Market Day?}
+    B -- Yes --> C{Within Trading Hours?}
+    B -- No --> D[Market Closed]
+    C -- Yes --> E[Real-time Updates]
+    C -- No --> D
+    E --> F{Data Source Available?}
+    F -- Yes --> G[Live Data]
+    F -- No --> H[Cached Data]
+  ```
+
+- **Local Market Adaptations:**
+  - Ethiopian Calendar Integration
+  - Local Currency Handling
+  - Market-Specific Trading Rules
+  - Regional News Integration
+
 # 5. Features Implemented So Far
 
 ### 5.1 Project Setup and Core Structure
@@ -172,6 +283,34 @@ The Ethio Trading App is built on a modular, scalable architecture that ensures 
   - Organized file structure and clear separation of concerns.
   - Consistent documentation and testing procedures integrated into the development workflow.
 
+### 5.9 Localization and Language Support
+- **Description:**  
+  - Comprehensive bilingual support with English and Amharic languages.
+  - Dynamic language switching with persistent preferences.
+- **Key Components:**  
+  - `lib/providers/language_provider.dart`: Manages language state and translations.
+  - Integrated SharedPreferences for persisting language preferences.
+  - Context-aware translation system using Provider pattern.
+
+### 5.10 Ethiopian Calendar Integration
+- **Description:**  
+  - Native support for Ethiopian calendar system.
+  - Seamless date conversions and formatting.
+- **Key Components:**  
+  - `lib/utils/ethiopian_utils.dart`: Ethiopian calendar utilities.
+  - Market hours tracking based on local time.
+  - Date display in Ethiopian format across the application.
+
+### 5.11 Portfolio Management
+- **Description:**  
+  - Comprehensive portfolio tracking and analysis.
+  - Real-time value calculations and performance metrics.
+- **Key Components:**  
+  - `lib/screens/portfolio_screen.dart`: Main portfolio interface.
+  - Asset distribution visualization.
+  - Transaction history tracking.
+  - Gain/loss calculations in Ethiopian Birr.
+
 # 6. Next Steps & Future Enhancements
 
 ### 6.1 Immediate Priorities
@@ -197,6 +336,28 @@ The Ethio Trading App is built on a modular, scalable architecture that ensures 
   - Explore features enabling social interactions among traders, such as shared strategies and community insights.
 - **Algorithmic Trading Modules:**  
   - Research and integrate algorithmic trading strategies for advanced users.
+
+### 6.3 Performance Optimizations
+- **Caching Strategy:**  
+  - Implement smart caching for market data to reduce API calls.
+  - Offline support for basic functionality.
+- **UI Performance:**  
+  - Lazy loading for historical data.
+  - Optimized list views with pagination.
+- **Network Efficiency:**  
+  - Compression for market data streams.
+  - Intelligent data polling based on market hours.
+
+### 6.4 Security Enhancements
+- **Authentication:**  
+  - Two-factor authentication integration.
+  - Biometric login support.
+- **Transaction Security:**  
+  - End-to-end encryption for trades.
+  - Real-time fraud detection.
+- **Data Protection:**  
+  - Enhanced data privacy measures.
+  - GDPR and local regulatory compliance.
 
 # 7. Technical Notes
 - **Design and UI:**  

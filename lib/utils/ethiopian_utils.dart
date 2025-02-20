@@ -1,113 +1,139 @@
 class EthiopianCurrencyFormatter {
   static String format(double amount) {
-    // Format with Ethiopian Birr symbol and thousands separator
-    final formatted = amount.toStringAsFixed(2).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
-    return 'ETB $formatted';
+    final formatter = amount.toStringAsFixed(2);
+    final parts = formatter.split('.');
+    final wholePart = parts[0];
+    final decimalPart = parts[1];
+
+    // Add thousands separators
+    final chars = wholePart.split('').reversed.toList();
+    final formatted = [];
+    for (var i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        formatted.add(',');
+      }
+      formatted.add(chars[i]);
+    }
+
+    return 'ETB ${formatted.reversed.join('')}.$decimalPart';
+  }
+
+  static double parse(String amount) {
+    // Remove currency symbol and commas
+    final cleaned = amount.replaceAll('ETB', '').replaceAll(',', '').trim();
+    return double.parse(cleaned);
   }
 }
 
 class EthiopianCalendar {
-  static const int yearDiff = 7;
-  static const int monthDiff = 8;
-
   static Map<String, dynamic> getCurrentDate() {
+    // Ethiopian calendar is 7-8 years behind Gregorian calendar
     final now = DateTime.now();
-    int ethYear = now.year + yearDiff;
-    int ethMonth = now.month + monthDiff;
+    int ethYear = now.year - 7;
+    int ethMonth = now.month;
+    int ethDay = now.day;
 
-    if (ethMonth > 13) {
-      ethMonth -= 13;
+    // Adjust for Ethiopian calendar's different new year start (September 11/12)
+    if (now.month > 9 || (now.month == 9 && now.day >= 11)) {
       ethYear += 1;
     }
 
     return {
       'year': ethYear,
       'month': ethMonth,
-      'day': _adjustEthiopianDay(now.day, ethMonth),
-      'monthName': getMonthName(ethMonth),
+      'day': ethDay,
+      'monthName': _getEthiopianMonthName(ethMonth),
     };
   }
 
-  static int _adjustEthiopianDay(int gregorianDay, int ethiopianMonth) {
-    // Ethiopian months have 30 days, except Pagume which has 5 or 6 days
-    if (ethiopianMonth == 13) {
-      return gregorianDay > 6 ? 5 : gregorianDay;
-    }
-    return gregorianDay > 30 ? 30 : gregorianDay;
-  }
-
-  static String getMonthName(int month) {
+  static String _getEthiopianMonthName(int month) {
     final months = [
       'መስከረም', // Meskerem
       'ጥቅምት', // Tikimt
-      'ኅዳር', // Hidar
-      'ታኅሣሥ', // Tahsas
+      'ህዳር', // Hidar
+      'ታህሳስ', // Tahsas
       'ጥር', // Tir
       'የካቲት', // Yekatit
       'መጋቢት', // Megabit
-      'ሚያዝያ', // Miyazia
+      'ሚያዚያ', // Miazia
       'ግንቦት', // Ginbot
       'ሰኔ', // Sene
       'ሐምሌ', // Hamle
       'ነሐሴ', // Nehase
       'ጳጉሜ', // Pagume
     ];
-    return months[month - 1];
+    return months[(month - 1) % 13];
   }
 }
 
 class EthiopianMarketHours {
-  // Ethiopian market trading hours (9:00 AM - 4:00 PM EAT)
   static bool isMarketOpen() {
-    final now =
-        DateTime.now().toUtc().add(const Duration(hours: 3)); // EAT is UTC+3
-    final weekday = now.weekday;
+    final now = DateTime.now();
+    final ethiopianTime = now.toUtc().add(const Duration(hours: 3)); // UTC+3
 
     // Market is closed on weekends
-    if (weekday == DateTime.saturday || weekday == DateTime.sunday) {
+    if (ethiopianTime.weekday == DateTime.saturday ||
+        ethiopianTime.weekday == DateTime.sunday) {
       return false;
     }
 
-    final hour = now.hour;
+    // Market hours: 9:00 AM - 4:00 PM Ethiopian time
+    final hour = ethiopianTime.hour;
     return hour >= 9 && hour < 16;
   }
 
   static String getMarketStatus() {
-    if (isMarketOpen()) {
-      return 'ገበያው ክፍት ነው'; // Market is Open
+    if (!isMarketOpen()) {
+      final now = DateTime.now();
+      final ethiopianTime = now.toUtc().add(const Duration(hours: 3));
+
+      if (ethiopianTime.weekday == DateTime.saturday ||
+          ethiopianTime.weekday == DateTime.sunday) {
+        return 'ገበያው ዝግ ነው - ወደ ሚቀጥለው የስራ ቀን';
+      }
+
+      if (ethiopianTime.hour < 9) {
+        return 'ገበያው ዝግ ነው - 9:00 AM ይከፈታል';
+      }
+
+      return 'ገበያው ዝግ ነው - ነገ 9:00 AM ይከፈታል';
     }
-    return 'ገበያው ዝግ ነው'; // Market is Closed
+
+    return 'ገበያው ክፍት ነው';
   }
 
   static String getNextMarketOpenTime() {
-    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final now = DateTime.now();
+    final ethiopianTime = now.toUtc().add(const Duration(hours: 3));
 
     if (isMarketOpen()) {
-      return 'ገበያው እስከ 4:00 PM ክፍት ነው'; // Market is open until 4:00 PM
+      return 'ገበያው አሁን ክፍት ነው';
     }
 
-    final nextOpeningTime = _getNextOpeningTime(now);
-    return 'ገበያው በ ${_formatDateTime(nextOpeningTime)} ይከፈታል'; // Market opens at...
-  }
+    DateTime nextOpen;
+    if (ethiopianTime.hour < 9) {
+      // Market opens today at 9 AM
+      nextOpen = DateTime(
+          ethiopianTime.year, ethiopianTime.month, ethiopianTime.day, 9, 0);
+    } else {
+      // Market opens next business day at 9 AM
+      nextOpen = DateTime(
+              ethiopianTime.year, ethiopianTime.month, ethiopianTime.day, 9, 0)
+          .add(const Duration(days: 1));
 
-  static DateTime _getNextOpeningTime(DateTime now) {
-    var nextOpen = DateTime(now.year, now.month, now.day, 9, 0);
-
-    if (now.hour >= 16) {
-      nextOpen = nextOpen.add(const Duration(days: 1));
+      // Skip weekends
+      while (nextOpen.weekday == DateTime.saturday ||
+          nextOpen.weekday == DateTime.sunday) {
+        nextOpen = nextOpen.add(const Duration(days: 1));
+      }
     }
 
-    while (nextOpen.weekday == DateTime.saturday ||
-        nextOpen.weekday == DateTime.sunday) {
-      nextOpen = nextOpen.add(const Duration(days: 1));
-    }
-
-    return nextOpen;
+    return 'ገበያው ${_formatDateTime(nextOpen)} ይከፈታል';
   }
 
   static String _formatDateTime(DateTime dt) {
-    final ethiopianDate = EthiopianCalendar.getCurrentDate();
-    return '${ethiopianDate['monthName']} ${ethiopianDate['day']}, ${ethiopianDate['year']} 9:00 AM';
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final period = dt.hour < 12 ? 'AM' : 'PM';
+    return '$hour:00 $period';
   }
 }
