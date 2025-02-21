@@ -222,4 +222,39 @@ class AuthProvider with ChangeNotifier {
       throw 'Failed to execute trade: $e';
     }
   }
+
+  Future<void> verifyAccount(Map<String, dynamic> verificationData) async {
+    if (_user == null) throw 'User not authenticated';
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(_user!.uid);
+
+      await userRef.update({
+        'verificationStatus': 'pending',
+        'verificationData': {
+          ...verificationData,
+          'submittedAt': FieldValue.serverTimestamp(),
+        },
+      });
+
+      // For testing purposes, auto-approve verification
+      await Future.delayed(const Duration(seconds: 2));
+      await userRef.update({
+        'isVerified': true,
+        'verificationStatus': 'approved',
+        'tradingEnabled': true,
+        'tradingLimit': 1000000, // 1M ETB initial limit
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _loadUserData();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

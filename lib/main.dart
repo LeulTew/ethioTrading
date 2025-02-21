@@ -19,7 +19,7 @@ import 'providers/language_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   if (shouldInitializeApp()) {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('language')) {
