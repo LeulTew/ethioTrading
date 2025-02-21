@@ -1,4 +1,6 @@
 import 'package:intl/intl.dart';
+import 'dart:core';
+import '../providers/language_provider.dart';
 
 class PasswordValidator {
   static String? validate(String? value) {
@@ -66,71 +68,207 @@ class PhoneNumberValidator {
 class TradeValidator {
   static String? validateQuantity(
     String value, {
-    required num lotSize,
-    required num availableBalance,
-    required num price,
+    required int lotSize,
+    required num availableBalance, // Changed from double to num
+    required num price, // Changed from double to num
+    num? maxDailyTradeValue = 1000000, // Changed from double? to num?
   }) {
+    try {
+      final quantity = int.parse(value);
+
+      // Basic validation
+      if (quantity <= 0) {
+        return 'quantity_must_be_positive';
+      }
+
+      // Lot size validation
+      if (quantity % lotSize != 0) {
+        return 'invalid_lot_size';
+      }
+
+      // Calculate total order value
+      final totalValue = quantity * price;
+
+      // Available balance validation
+      if (totalValue > availableBalance) {
+        return 'insufficient_funds';
+      }
+
+      // Daily trade limit validation
+      if (maxDailyTradeValue != null && totalValue > maxDailyTradeValue) {
+        return 'exceeds_daily_limit';
+      }
+
+      return null;
+    } catch (e) {
+      return 'invalid_quantity';
+    }
+  }
+
+  static String? validatePrice(
+    String value, {
+    required double basePrice,
+    required double tickSize,
+    double maxDeviation = 0.10, // Ethiopian market's 10% daily limit
+  }) {
+    try {
+      final price = double.parse(value);
+
+      // Basic validation
+      if (price <= 0) {
+        return 'price_must_be_positive';
+      }
+
+      // Tick size validation
+      final ticksCount = price / tickSize;
+      if ((ticksCount - ticksCount.round()).abs() > 0.00001) {
+        return 'invalid_tick_size';
+      }
+
+      // Price range validation based on Ethiopian market rules
+      final minPrice = basePrice * (1 - maxDeviation);
+      final maxPrice = basePrice * (1 + maxDeviation);
+
+      if (price < minPrice || price > maxPrice) {
+        return 'price_out_of_range';
+      }
+
+      return null;
+    } catch (e) {
+      return 'invalid_price';
+    }
+  }
+
+  static String? validateBank(String value) {
     if (value.isEmpty) {
-      return 'Quantity is required';
+      return 'bank_required';
+    }
+    return null;
+  }
+
+  static String? validateAccountNumber(String value) {
+    if (value.isEmpty) {
+      return 'account_number_required';
     }
 
-    final quantity = int.tryParse(value);
-    if (quantity == null) {
-      return 'Please enter a valid number';
+    // Ethiopian bank account number format validation (basic)
+    if (value.length < 10 || value.length > 16) {
+      return 'invalid_account_number_length';
     }
 
-    if (quantity <= 0) {
-      return 'Quantity must be greater than 0';
-    }
-
-    if (quantity % lotSize != 0) {
-      return 'Quantity must be a multiple of $lotSize';
-    }
-
-    final totalCost = quantity * price;
-    if (totalCost > availableBalance) {
-      return 'Insufficient balance for this trade';
+    if (!RegExp(r'^\d+$').hasMatch(value)) {
+      return 'account_number_must_be_numeric';
     }
 
     return null;
   }
 
-  static String? validatePrice(
-    String value, {
-    required num basePrice,
-    required num tickSize,
-  }) {
-    if (value.isEmpty) {
-      return 'Price is required';
+  static String? validateTradeType(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'trade_type_required';
     }
 
-    final price = double.tryParse(value);
-    if (price == null) {
-      return 'Please enter a valid price';
-    }
-
-    if (price <= 0) {
-      return 'Price must be greater than 0';
-    }
-
-    if ((price / tickSize).round() * tickSize != price) {
-      return 'Price must be a multiple of $tickSize';
-    }
-
-    // Maximum daily price movement (10%)
-    const maxPriceChange = 0.10;
-    final maxPrice = basePrice * (1 + maxPriceChange);
-    final minPrice = basePrice * (1 - maxPriceChange);
-
-    if (price > maxPrice) {
-      return 'Price cannot be more than 10% above base price';
-    }
-
-    if (price < minPrice) {
-      return 'Price cannot be more than 10% below base price';
+    if (!['market', 'limit'].contains(value.toLowerCase())) {
+      return 'invalid_trade_type';
     }
 
     return null;
+  }
+
+  static String? validateOrderSide(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'order_side_required';
+    }
+
+    if (!['buy', 'sell'].contains(value.toLowerCase())) {
+      return 'invalid_order_side';
+    }
+
+    return null;
+  }
+
+  static Map<String, dynamic> canTrade({
+    required Map<String, dynamic> userProfile,
+  }) {
+    // Check if user profile exists
+    if (userProfile.isEmpty) {
+      return {'canTrade': false, 'reason': 'profile_not_found'};
+    }
+
+    // Check if user is verified
+    final isVerified = userProfile['isVerified'] as bool? ?? false;
+    if (!isVerified) {
+      return {'canTrade': false, 'reason': 'account_not_verified'};
+    }
+
+    // Check if trading is enabled for user
+    final isTradingEnabled = userProfile['isTradingEnabled'] as bool? ?? false;
+    if (!isTradingEnabled) {
+      return {'canTrade': false, 'reason': 'trading_disabled'};
+    }
+
+    return {'canTrade': true, 'reason': null};
+  }
+
+  static String getFormattedError(String errorCode, LanguageProvider lang) {
+    return lang.translate(errorCode);
+  }
+
+  static Map<String, dynamic> validateTrade({
+    required String quantity,
+    required String price,
+    required String tradeType,
+    required String orderSide,
+    required Map<String, dynamic> stockData,
+    required Map<String, dynamic> userProfile,
+  }) {
+    final qty = int.tryParse(quantity);
+    final prc = double.tryParse(price);
+
+    // Basic validation first
+    if (qty == null || qty <= 0) {
+      return {'isValid': false, 'error': 'invalid_quantity'};
+    }
+    if (prc == null || prc <= 0) {
+      return {'isValid': false, 'error': 'invalid_price'};
+    }
+
+    // Check if user can trade
+    final canTradeResult = canTrade(userProfile: userProfile);
+    if (!canTradeResult['canTrade']!) {
+      return {'isValid': false, 'error': canTradeResult['reason']};
+    }
+
+    // Validate trading limits
+    final totalValue = qty * prc;
+    final tradingLimit =
+        (userProfile['tradingLimit'] as num?)?.toDouble() ?? 0.0;
+    if (orderSide == 'buy' && totalValue > tradingLimit) {
+      return {'isValid': false, 'error': 'trading_limit_exceeded'};
+    }
+
+    // Check available balance for buy orders
+    if (orderSide == 'buy') {
+      final availableBalance =
+          (userProfile['balance'] as num?)?.toDouble() ?? 0.0;
+      if (totalValue > availableBalance) {
+        return {'isValid': false, 'error': 'insufficient_funds'};
+      }
+    }
+
+    // Check available shares for sell orders
+    if (orderSide == 'sell') {
+      final portfolio = userProfile['portfolio'] as List? ?? [];
+      final position = portfolio.firstWhere(
+        (p) => p['symbol'] == stockData['symbol'],
+        orElse: () => {'quantity': 0},
+      );
+      if (qty > (position['quantity'] as int? ?? 0)) {
+        return {'isValid': false, 'error': 'insufficient_shares'};
+      }
+    }
+
+    return {'isValid': true, 'error': null};
   }
 }
 
