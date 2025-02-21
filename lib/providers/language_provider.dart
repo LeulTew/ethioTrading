@@ -27,6 +27,21 @@ class LanguageProvider with ChangeNotifier {
         _currentLanguage == 'en' ? englishTranslations : amharicTranslations;
     return translations[key] ?? englishTranslations[key] ?? key;
   }
+
+  // Add a method to force language update across all screens
+  Future<void> forceLanguageUpdate() async {
+    notifyListeners();
+    // Save current language preference
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language', _currentLanguage);
+  }
+
+  // Add method to initialize language from saved preferences
+  Future<void> initializeLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentLanguage = prefs.getString('language') ?? 'en';
+    notifyListeners();
+  }
 }
 
 const Map<String, String> englishTranslations = {

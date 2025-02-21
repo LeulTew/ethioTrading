@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:ui';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/ethiopian_utils.dart';
@@ -23,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   final _addressController = TextEditingController();
   final _bankAccountController = TextEditingController();
   bool _isEditing = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -46,7 +51,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isLoading = true);
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     try {
       await authProvider.updateProfile({
         'username': _usernameController.text,
@@ -55,23 +63,94 @@ class _ProfileScreenState extends State<ProfileScreen>
         'bankAccountNumber': _bankAccountController.text,
       });
 
-      setState(() => _isEditing = false);
+      setState(() {
+        _isEditing = false;
+        _isLoading = false;
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(lang.translate('profile_updated')),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     } catch (e) {
+      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating profile: $e')),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(lang.translate('update_error')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     }
   }
 
+  Widget _buildProfileCard({
+    required String title,
+    required List<Widget> children,
+    EdgeInsets? padding,
+  }) {
+    return FadeInUp(
+      duration: const Duration(milliseconds: 600),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: padding ?? const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (title.isNotEmpty) ...[
+                    Text(
+                      title,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  ...children,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfileTab() {
     final theme = Theme.of(context);
+    final lang = Provider.of<LanguageProvider>(context);
     final userData = Provider.of<AuthProvider>(context).userData;
     final tradingLevel = userData?['tradingLevel'] ?? 'beginner';
     final isVerified = userData?['isVerified'] ?? false;
@@ -83,158 +162,304 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Profile Header with Avatar
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: NetworkImage(
-                      userData?['profilePictureUrl'] ??
-                          'https://ui-avatars.com/api/?name=${_usernameController.text}',
-                    ),
-                  ),
-                  if (_isEditing)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
+              child: FadeInDown(
+                duration: const Duration(milliseconds: 600),
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
                       child: CircleAvatar(
-                        backgroundColor: theme.primaryColor,
-                        radius: 18,
-                        child: IconButton(
-                          icon: const Icon(Icons.camera_alt, size: 18),
-                          onPressed: () {/* Implement photo upload */},
+                        radius: 50,
+                        backgroundImage: NetworkImage(
+                          userData?['profilePictureUrl'] ??
+                              'https://ui-avatars.com/api/?name=${_usernameController.text}',
                         ),
+                      ).animate(
+                        effects: [
+                          ShimmerEffect(
+                            duration: const Duration(seconds: 2),
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.2),
+                          ),
+                        ],
                       ),
                     ),
-                ],
+                    if (_isEditing)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            backgroundColor: theme.colorScheme.primary,
+                            radius: 18,
+                            child: IconButton(
+                              icon: const Icon(Icons.camera_alt, size: 18),
+                              onPressed: () {/* Implement photo upload */},
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
 
             // Trading Level Badge
             Center(
-              child: Chip(
-                avatar: Icon(
-                  tradingLevel == 'advanced'
-                      ? Icons.workspace_premium
-                      : tradingLevel == 'intermediate'
-                          ? Icons.trending_up
-                          : Icons.school,
-                  color: theme.primaryColor,
-                ),
-                label: Text(
-                  tradingLevel.toUpperCase(),
-                  style: theme.textTheme.labelLarge,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Verification Status
-            ListTile(
-              leading: Icon(
-                isVerified ? Icons.verified : Icons.warning,
-                color: isVerified ? Colors.green : Colors.orange,
-              ),
-              title: Text(
-                  isVerified ? 'Verified Account' : 'Verification Required'),
-              subtitle: Text(isVerified
-                  ? 'Your account is fully verified'
-                  : 'Complete verification to unlock full trading features'),
-              trailing: isVerified
-                  ? null
-                  : TextButton(
-                      onPressed: () {/* Implement verification flow */},
-                      child: const Text('Verify Now'),
+              child: FadeInUp(
+                duration: const Duration(milliseconds: 800),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primary,
+                        theme.colorScheme.secondary,
+                      ],
                     ),
-            ),
-            const Divider(),
-
-            // Profile Fields
-            TextFormField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Username',
-                enabled: _isEditing,
-                prefixIcon: const Icon(Icons.person),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tradingLevel == 'advanced'
+                            ? Icons.workspace_premium
+                            : tradingLevel == 'intermediate'
+                                ? Icons.trending_up
+                                : Icons.school,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        lang.translate(tradingLevel).toUpperCase(),
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              validator: (value) =>
-                  value?.isEmpty == true ? 'Username is required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _emailController,
-              enabled: false, // Email changes require verification
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _phoneController,
-              decoration: InputDecoration(
-                labelText: 'Phone Number',
-                enabled: _isEditing,
-                prefixIcon: const Icon(Icons.phone),
-              ),
-              validator: (value) =>
-                  value?.isEmpty == true ? 'Phone number is required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: 'Address',
-                enabled: _isEditing,
-                prefixIcon: const Icon(Icons.location_on),
-              ),
-              maxLines: 2,
-              validator: (value) =>
-                  value?.isEmpty == true ? 'Address is required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _bankAccountController,
-              decoration: InputDecoration(
-                labelText: 'Bank Account Number',
-                enabled: _isEditing,
-                prefixIcon: const Icon(Icons.account_balance),
-              ),
-              validator: (value) => value?.isEmpty == true
-                  ? 'Bank account number is required'
-                  : null,
             ),
             const SizedBox(height: 24),
 
-            if (!_isEditing)
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () => setState(() => _isEditing = true),
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Edit Profile'),
+            // Verification Status Card
+            _buildProfileCard(
+              title: '',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isVerified
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isVerified ? Icons.verified : Icons.warning,
+                      color: isVerified ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                  title: Text(
+                    lang.translate(isVerified
+                        ? 'verified_account'
+                        : 'verification_required'),
+                    style:
+                        GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    lang.translate(isVerified
+                        ? 'account_verified'
+                        : 'complete_verification'),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  trailing: isVerified
+                      ? null
+                      : TextButton.icon(
+                          onPressed: () {/* Implement verification flow */},
+                          icon: const Icon(Icons.verified_user),
+                          label: Text(lang.translate('verify_now')),
+                        ),
                 ),
-              )
-            else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: () => setState(() => _isEditing = false),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _saveProfile,
-                    child: const Text('Save Changes'),
-                  ),
-                ],
-              ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Profile Fields Card
+            _buildProfileCard(
+              title: lang.translate('personal_info'),
+              children: [
+                _buildProfileField(
+                  controller: _usernameController,
+                  label: lang.translate('username'),
+                  icon: Icons.person,
+                  enabled: _isEditing,
+                  validator: (value) => value?.isEmpty == true
+                      ? lang.translate('username_required')
+                      : null,
+                ),
+                const SizedBox(height: 16),
+
+                _buildProfileField(
+                  controller: _emailController,
+                  label: lang.translate('email'),
+                  icon: Icons.email,
+                  enabled: false,
+                ),
+                const SizedBox(height: 16),
+
+                _buildProfileField(
+                  controller: _phoneController,
+                  label: lang.translate('phone_number'),
+                  icon: Icons.phone,
+                  enabled: _isEditing,
+                  validator: (value) => value?.isEmpty == true
+                      ? lang.translate('phone_required')
+                      : null,
+                ),
+                const SizedBox(height: 16),
+
+                _buildProfileField(
+                  controller: _addressController,
+                  label: lang.translate('address'),
+                  icon: Icons.location_on,
+                  enabled: _isEditing,
+                  maxLines: 2,
+                  validator: (value) => value?.isEmpty == true
+                      ? lang.translate('address_required')
+                      : null,
+                ),
+                const SizedBox(height: 16),
+
+                _buildProfileField(
+                  controller: _bankAccountController,
+                  label: lang.translate('bank_account'),
+                  icon: Icons.account_balance,
+                  enabled: _isEditing,
+                  validator: (value) => value?.isEmpty == true
+                      ? lang.translate('bank_account_required')
+                      : null,
+                ),
+                const SizedBox(height: 24),
+
+                // Action Buttons
+                Center(
+                  child: _isEditing
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () =>
+                                  setState(() => _isEditing = false),
+                              icon: const Icon(Icons.cancel),
+                              label: Text(lang.translate('cancel')),
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              onPressed: _isLoading ? null : _saveProfile,
+                              icon: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save),
+                              label: Text(lang.translate('save_changes')),
+                            ),
+                          ],
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () => setState(() => _isEditing = true),
+                          icon: const Icon(Icons.edit),
+                          label: Text(lang.translate('edit_profile')),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool enabled = true,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.outline,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 2,
+          ),
         ),
       ),
     );
@@ -448,17 +673,19 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(lang.translate('profile')),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: const [
-            Tab(text: 'Profile'),
-            Tab(text: 'Preferences'),
-            Tab(text: 'Trading Limits'),
-            Tab(text: 'Security'),
+          tabs: [
+            Tab(text: lang.translate('profile')),
+            Tab(text: lang.translate('preferences')),
+            Tab(text: lang.translate('trading_level')),
+            Tab(text: lang.translate('security')),
           ],
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -148,6 +149,77 @@ class AuthProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> executeTrade(Map<String, dynamic> tradeData) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw 'User not authenticated';
+
+      // Start a batch write
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Get user document reference
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+      // Get current user data
+      final userData = (await userRef.get()).data() ?? {};
+
+      // Update user's portfolio
+      final portfolio = (userData['portfolio'] as List?) ?? [];
+      final existingPosition = portfolio.firstWhere(
+        (p) => p['symbol'] == tradeData['symbol'],
+        orElse: () => null,
+      );
+
+      if (tradeData['side'] == 'buy') {
+        if (existingPosition == null) {
+          portfolio.add({
+            'symbol': tradeData['symbol'],
+            'quantity': tradeData['quantity'],
+            'avgPrice': tradeData['price'],
+          });
+        } else {
+          final totalQuantity =
+              existingPosition['quantity'] + tradeData['quantity'];
+          final totalCost =
+              (existingPosition['quantity'] * existingPosition['avgPrice']) +
+                  (tradeData['quantity'] * tradeData['price']);
+          existingPosition['quantity'] = totalQuantity;
+          existingPosition['avgPrice'] = totalCost / totalQuantity;
+        }
+      }
+
+      // Update user's cash balance
+      final totalCost = tradeData['quantity'] * tradeData['price'] +
+          tradeData['fees']['total'];
+      if (tradeData['side'] == 'buy') {
+        userData['balance'] = (userData['balance'] ?? 0.0) - totalCost;
+      } else {
+        userData['balance'] = (userData['balance'] ?? 0.0) + totalCost;
+      }
+
+      // Add trade to history
+      final tradeRef = FirebaseFirestore.instance.collection('trades').doc();
+      batch.set(tradeRef, {
+        ...tradeData,
+        'userId': user.uid,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Update user data
+      batch.update(userRef, {
+        'portfolio': portfolio,
+        'balance': userData['balance'],
+      });
+
+      // Commit the batch
+      await batch.commit();
+      notifyListeners();
+    } catch (e) {
+      throw 'Failed to execute trade: $e';
     }
   }
 }

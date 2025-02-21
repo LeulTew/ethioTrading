@@ -1,154 +1,425 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'dart:math' as math;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
+import '../providers/language_provider.dart';
+import '../utils/ethiopian_utils.dart';
 
-class OrderBookWidget extends StatelessWidget {
+class OrderBookWidget extends StatefulWidget {
   final Map<String, dynamic> stockData;
-  final double maxDepth;
+  final bool showHeader;
+  final double maxHeight;
 
   const OrderBookWidget({
     super.key,
     required this.stockData,
-    this.maxDepth = 20,
+    this.showHeader = true,
+    this.maxHeight = 400,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  State<OrderBookWidget> createState() => _OrderBookWidgetState();
+}
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Order Book', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                    child: Text('Price', style: theme.textTheme.labelMedium)),
-                Expanded(
-                    child: Text('Size', style: theme.textTheme.labelMedium)),
-                Expanded(
-                    child: Text('Total', style: theme.textTheme.labelMedium)),
-              ],
-            ),
-            const Divider(),
-            SizedBox(
-              height: 300,
-              child: Row(
+class _OrderBookWidgetState extends State<OrderBookWidget> {
+  String _selectedView = 'combined';
+  bool _isExpanded = false;
+
+  Widget _buildHeader(ThemeData theme, LanguageProvider lang) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                lang.translate('order_book'),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Row(
                 children: [
-                  // Asks (Sell Orders)
-                  Expanded(
-                    child: _buildOrderList(
-                      generateMockOrders(true),
-                      isAsk: true,
-                      theme: theme,
+                  IconButton(
+                    icon: Icon(
+                      _isExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+                      size: 20,
                     ),
+                    onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                    tooltip:
+                        lang.translate(_isExpanded ? 'collapse' : 'expand'),
                   ),
-                  // Bids (Buy Orders)
-                  Expanded(
-                    child: _buildOrderList(
-                      generateMockOrders(false),
-                      isAsk: false,
-                      theme: theme,
-                    ),
-                  ),
+                  const SizedBox(width: 8),
+                  _buildViewSelector(theme, lang),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: OrderBookChart(
-                asks: generateMockOrders(true),
-                bids: generateMockOrders(false),
-                basePrice: stockData['price'],
+            ],
+          ),
+        ),
+        _buildMarketDepthSummary(theme, lang),
+      ],
+    );
+  }
+
+  Widget _buildViewSelector(ThemeData theme, LanguageProvider lang) {
+    return SegmentedButton<String>(
+      segments: [
+        ButtonSegment(
+          value: 'combined',
+          label: Text(
+            lang.translate('combined'),
+            style: GoogleFonts.spaceGrotesk(fontSize: 12),
+          ),
+          icon: const Icon(Icons.compare_arrows, size: 16),
+        ),
+        ButtonSegment(
+          value: 'bids',
+          label: Text(
+            lang.translate('bids'),
+            style: GoogleFonts.spaceGrotesk(fontSize: 12),
+          ),
+          icon: const Icon(Icons.arrow_circle_up, size: 16),
+        ),
+        ButtonSegment(
+          value: 'asks',
+          label: Text(
+            lang.translate('asks'),
+            style: GoogleFonts.spaceGrotesk(fontSize: 12),
+          ),
+          icon: const Icon(Icons.arrow_circle_down, size: 16),
+        ),
+      ],
+      selected: {_selectedView},
+      onSelectionChanged: (Set<String> selected) {
+        setState(() => _selectedView = selected.first);
+      },
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
+  Widget _buildMarketDepthSummary(ThemeData theme, LanguageProvider lang) {
+    final orderBook = widget.stockData['orderBook'];
+    final marketDepth = widget.stockData['marketDepth'] ?? {};
+    final bidAskRatio = marketDepth['bidAskRatio'] ?? 1.0;
+    final isStrongBuying = bidAskRatio > 1.2;
+    final isStrongSelling = bidAskRatio < 0.8;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildDepthSummaryItem(
+                label: lang.translate('total_bids'),
+                value: EthiopianCurrencyFormatter.formatVolume(
+                  orderBook['bids']
+                      .fold(0.0, (sum, bid) => sum + bid['volume']),
+                ),
+                color: Colors.green,
+                theme: theme,
               ),
-            ),
+              _buildDepthSummaryItem(
+                label: lang.translate('total_asks'),
+                value: EthiopianCurrencyFormatter.formatVolume(
+                  orderBook['asks']
+                      .fold(0.0, (sum, ask) => sum + ask['volume']),
+                ),
+                color: Colors.red,
+                theme: theme,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                isStrongBuying
+                    ? Icons.trending_up
+                    : isStrongSelling
+                        ? Icons.trending_down
+                        : Icons.trending_flat,
+                size: 16,
+                color: isStrongBuying
+                    ? Colors.green
+                    : isStrongSelling
+                        ? Colors.red
+                        : theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                lang.translate(
+                  isStrongBuying
+                      ? 'strong_buying_pressure'
+                      : isStrongSelling
+                          ? 'strong_selling_pressure'
+                          : 'balanced_orderbook',
+                ),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDepthSummaryItem({
+    required String label,
+    required String value,
+    required Color color,
+    required ThemeData theme,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 12,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderTable(ThemeData theme, LanguageProvider lang) {
+    final orderBook = widget.stockData['orderBook'];
+    final bids = orderBook['bids'] as List;
+    final asks = orderBook['asks'] as List;
+    final maxTotal = [...bids, ...asks]
+        .map((order) => order['total'] as double)
+        .reduce((a, b) => a > b ? a : b);
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: _isExpanded ? double.infinity : widget.maxHeight,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildTableHeader(theme, lang),
+            if (_selectedView != 'asks')
+              ..._buildBidRows(bids, maxTotal, theme),
+            if (_selectedView != 'bids')
+              ..._buildAskRows(asks, maxTotal, theme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOrderList(
-    List<OrderBookEntry> orders, {
-    required bool isAsk,
-    required ThemeData theme,
-  }) {
-    return ListView.builder(
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = isAsk ? orders[index] : orders[orders.length - 1 - index];
-        final cumulative = orders
-            .sublist(0, isAsk ? index + 1 : orders.length - index)
-            .fold(0.0, (sum, item) => sum + item.size);
-
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                isAsk
-                    ? Colors.red.withValues(alpha: 0.1)
-                    : Colors.green.withValues(alpha: 0.1),
-                Colors.transparent,
-              ],
-              stops: [cumulative / orders.last.cumulativeTotal, 1.0],
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
+  Widget _buildTableHeader(ThemeData theme, LanguageProvider lang) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              lang.translate('price'),
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  order.price.toStringAsFixed(2),
-                  style: TextStyle(
-                    color: isAsk ? Colors.red : Colors.green,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              lang.translate('amount'),
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
               ),
-              Expanded(
-                child: Text(
-                  order.size.toStringAsFixed(2),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  cumulative.toStringAsFixed(2),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-            ],
+              textAlign: TextAlign.right,
+            ),
           ),
-        );
-      },
+          Expanded(
+            flex: 2,
+            child: Text(
+              lang.translate('total'),
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  List<OrderBookEntry> generateMockOrders(bool isAsk) {
-    final random = math.Random();
-    final basePrice = stockData['price'] as double;
-    final orders = <OrderBookEntry>[];
-    double cumulativeTotal = 0;
+  List<Widget> _buildBidRows(List bids, double maxTotal, ThemeData theme) {
+    return bids.map((bid) {
+      final total = bid['total'] as double;
+      final percentageOfMax = total / maxTotal;
 
-    for (int i = 0; i < maxDepth; i++) {
-      final price = basePrice * (1 + (isAsk ? 1 : -1) * i * 0.001);
-      final size = 100 + random.nextDouble() * 900;
-      cumulativeTotal += size;
-      orders.add(OrderBookEntry(
-        price: price,
-        size: size,
-        cumulativeTotal: cumulativeTotal,
-      ));
-    }
+      return FadeIn(
+        child: Stack(
+          children: [
+            Container(
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                  colors: [
+                    Colors.green.withValues(alpha: 0.1 * percentageOfMax),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      bid['price'].toStringAsFixed(2),
+                      style: GoogleFonts.spaceGrotesk(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      EthiopianCurrencyFormatter.formatVolume(bid['volume']),
+                      style: GoogleFonts.spaceGrotesk(),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      EthiopianCurrencyFormatter.format(total),
+                      style: GoogleFonts.spaceGrotesk(),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
 
-    return orders;
+  List<Widget> _buildAskRows(List asks, double maxTotal, ThemeData theme) {
+    return asks.map((ask) {
+      final total = ask['total'] as double;
+      final percentageOfMax = total / maxTotal;
+
+      return FadeIn(
+        child: Stack(
+          children: [
+            Container(
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                  colors: [
+                    Colors.red.withValues(alpha: 0.1 * percentageOfMax),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      ask['price'].toStringAsFixed(2),
+                      style: GoogleFonts.spaceGrotesk(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      EthiopianCurrencyFormatter.formatVolume(ask['volume']),
+                      style: GoogleFonts.spaceGrotesk(),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      EthiopianCurrencyFormatter.format(total),
+                      style: GoogleFonts.spaceGrotesk(),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lang = Provider.of<LanguageProvider>(context);
+
+    return Column(
+      children: [
+        if (widget.showHeader) _buildHeader(theme, lang),
+        _buildOrderTable(theme, lang),
+      ],
+    );
   }
 }
 

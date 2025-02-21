@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../providers/language_provider.dart';
 
 class EthiopianCurrencyFormatter {
   static final NumberFormat _formatter = NumberFormat.currency(
@@ -7,8 +8,15 @@ class EthiopianCurrencyFormatter {
     decimalDigits: 2,
   );
 
+  static final NumberFormat _volumeFormatter =
+      NumberFormat.compact(locale: 'en');
+
   static String format(double amount) {
     return _formatter.format(amount);
+  }
+
+  static String formatVolume(num volume) {
+    return _volumeFormatter.format(volume);
   }
 
   static double parse(String amount) {
@@ -319,5 +327,24 @@ class MarketStatistics {
       'marketIndex': weightedIndexValue,
       'indexChange': indexChange,
     };
+  }
+}
+
+class EthiopianUtils {
+  static String timeAgo(DateTime dateTime, LanguageProvider lang) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inSeconds < 60) {
+      return lang.translate('just_now');
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}${lang.translate('minutes_ago')}';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}${lang.translate('hours_ago')}';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}${lang.translate('days_ago')}';
+    } else {
+      return DateFormat('MMM d, y').format(dateTime);
+    }
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../data/mock_data.dart';
+import '../providers/language_provider.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -25,6 +27,10 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _generateMockPortfolioData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LanguageProvider>(context, listen: false)
+          .initializeLanguage();
+    });
   }
 
   void _generateMockPortfolioData() {
@@ -46,16 +52,17 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     final theme = Theme.of(context);
     final currencyFormatter =
         NumberFormat.currency(locale: 'am_ET', symbol: 'ETB', decimalDigits: 2);
+    final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Portfolio'),
+        title: Text(lang.translate('portfolio')),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Holdings'),
-            Tab(text: 'History'),
+          tabs: [
+            Tab(text: lang.translate('overview')),
+            Tab(text: lang.translate('holdings')),
+            Tab(text: lang.translate('history')),
           ],
         ),
       ),

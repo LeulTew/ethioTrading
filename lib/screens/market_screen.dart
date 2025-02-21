@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui';
+import 'dart:async';
 import '../data/ethio_data.dart';
 import '../utils/ethiopian_utils.dart';
 import '../providers/language_provider.dart';
 import 'stock_detail_screen.dart';
-import 'dart:async';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -24,14 +27,14 @@ class _MarketScreenState extends State<MarketScreen>
   String _searchQuery = '';
   late Timer _marketStatusTimer;
   bool _isMarketOpen = false;
-  String _marketStatus = '';
   String _selectedTimeframe = '1D';
   late ZoomPanBehavior _zoomPanBehavior;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    ethioMarketData = EthioData.generateMockEthioMarketData();
+    _initData();
     _tabController = TabController(length: 3, vsync: this);
     _updateMarketStatus();
     _marketStatusTimer = Timer.periodic(
@@ -46,10 +49,12 @@ class _MarketScreenState extends State<MarketScreen>
     );
   }
 
-  void _updateMarketStatus() {
+  Future<void> _initData() async {
+    await Future.delayed(
+        const Duration(milliseconds: 500)); // Simulate network delay
     setState(() {
-      _isMarketOpen = EthiopianMarketHours.isMarketOpen();
-      _marketStatus = EthiopianMarketHours.getMarketStatus();
+      ethioMarketData = EthioData.generateMockEthioMarketData();
+      _isLoading = false;
     });
   }
 
@@ -58,6 +63,12 @@ class _MarketScreenState extends State<MarketScreen>
     _tabController.dispose();
     _marketStatusTimer.cancel();
     super.dispose();
+  }
+
+  void _updateMarketStatus() {
+    setState(() {
+      _isMarketOpen = EthiopianMarketHours.isMarketOpen();
+    });
   }
 
   List<Map<String, dynamic>> get filteredData {
@@ -71,150 +82,236 @@ class _MarketScreenState extends State<MarketScreen>
     }).toList();
   }
 
-  Widget _buildMarketIndexChart(ThemeData theme) {
-    return Card(
-      child: Column(
+  Widget _buildMarketStatusBanner(ThemeData theme, LanguageProvider lang) {
+    final ethiopianDate = EthiopianCalendar.getCurrentDate();
+    final marketStatusColor =
+        _isMarketOpen ? Colors.green : theme.colorScheme.error;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: marketStatusColor.withValues(alpha: 0.1),
+        border: Border(
+          bottom: BorderSide(
+            color: marketStatusColor.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: marketStatusColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                lang.translate(_isMarketOpen ? 'market_open' : 'market_closed'),
+                style: GoogleFonts.spaceGrotesk(
+                  color: marketStatusColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '${ethiopianDate['monthName']} ${ethiopianDate['day']}, ${ethiopianDate['year']}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(ThemeData theme, LanguageProvider lang) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          decoration: InputDecoration(
+            hintText: lang.translate('search_stocks'),
+            hintStyle: GoogleFonts.spaceGrotesk(
+              color: theme.hintColor,
+            ),
+            prefixIcon: const Icon(Icons.search),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: Colors.transparent,
+          ),
+          onChanged: (value) => setState(() => _searchQuery = value),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectorFilter(LanguageProvider lang) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _buildFilterChip('All', lang.translate('all_sectors')),
+          const SizedBox(width: 8),
+          ...EthioData.getSectors().map((sector) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildFilterChip(
+                    sector, lang.translate(sector.toLowerCase())),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String value, String label) {
+    return FilterChip(
+      label: Text(label),
+      selected: _selectedSector == value,
+      onSelected: (selected) => setState(() => _selectedSector = value),
+      showCheckmark: false,
+      avatar:
+          _selectedSector == value ? const Icon(Icons.check, size: 16) : null,
+    );
+  }
+
+  Widget _buildTimeframeSelector(ThemeData theme, LanguageProvider lang) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: SegmentedButton<String>(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return theme.colorScheme.primary.withValues(alpha: 0.1);
+            }
+            return null;
+          }),
+          side: WidgetStateProperty.all(BorderSide.none),
+        ),
+        segments: [
+          ButtonSegment(value: '1D', label: Text(lang.translate('1d'))),
+          ButtonSegment(value: '1W', label: Text(lang.translate('1w'))),
+          ButtonSegment(value: '1M', label: Text(lang.translate('1m'))),
+          ButtonSegment(value: '1Y', label: Text(lang.translate('1y'))),
+        ],
+        selected: {_selectedTimeframe},
+        onSelectionChanged: (selection) =>
+            setState(() => _selectedTimeframe = selection.first),
+      ),
+    );
+  }
+
+  Widget _buildMarketIndexChart(ThemeData theme, LanguageProvider lang) {
+    return FadeInUp(
+      duration: const Duration(milliseconds: 600),
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Market Index', style: theme.textTheme.titleLarge),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: '1D', label: Text('1D')),
-                    ButtonSegment(value: '1W', label: Text('1W')),
-                    ButtonSegment(value: '1M', label: Text('1M')),
-                    ButtonSegment(value: '1Y', label: Text('1Y')),
-                  ],
-                  selected: {_selectedTimeframe},
-                  onSelectionChanged: (Set<String> selection) {
-                    setState(() => _selectedTimeframe = selection.first);
-                  },
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        lang.translate('market_index'),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      _buildTimeframeSelector(theme, lang),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 300,
-            child: SfCartesianChart(
-              zoomPanBehavior: _zoomPanBehavior,
-              trackballBehavior: TrackballBehavior(
-                enable: true,
-                tooltipSettings: const InteractiveTooltip(enable: true),
-              ),
-              primaryXAxis: DateTimeAxis(
-                majorGridLines: const MajorGridLines(width: 0),
-                dateFormat: _selectedTimeframe == '1D'
-                    ? DateFormat.Hm()
-                    : DateFormat.MMMd(),
-              ),
-              primaryYAxis: const NumericAxis(
-                opposedPosition: true,
-                majorGridLines: MajorGridLines(width: 0.5, dashArray: [5, 5]),
-              ),
-              series: <CartesianSeries>[
-                // Area Series for volume
-                AreaSeries<Map<String, dynamic>, DateTime>(
-                  dataSource: _getChartData(),
-                  xValueMapper: (Map<String, dynamic> data, _) =>
-                      data['timestamp'],
-                  yValueMapper: (Map<String, dynamic> data, _) =>
-                      data['volume'],
-                  opacity: 0.3,
-                  name: 'Volume',
-                ),
-                // Line Series for price
-                LineSeries<Map<String, dynamic>, DateTime>(
-                  dataSource: _getChartData(),
-                  xValueMapper: (Map<String, dynamic> data, _) =>
-                      data['timestamp'],
-                  yValueMapper: (Map<String, dynamic> data, _) => data['value'],
-                  name: 'Market Index',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectorPerformanceChart(ThemeData theme) {
-    final sectorWeights = EthioData.getSectorWeights(ethioMarketData);
-
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child:
-                Text('Sector Performance', style: theme.textTheme.titleLarge),
-          ),
-          SizedBox(
-            height: 300,
-            child: SfCircularChart(
-              legend:
-                  const Legend(isVisible: true, position: LegendPosition.right),
-              series: <CircularSeries>[
-                DoughnutSeries<MapEntry<String, double>, String>(
-                  dataSource: sectorWeights.entries.toList(),
-                  xValueMapper: (MapEntry<String, double> data, _) => data.key,
-                  yValueMapper: (MapEntry<String, double> data, _) =>
-                      data.value,
-                  dataLabelSettings: const DataLabelSettings(
-                    isVisible: true,
-                    labelPosition: ChartDataLabelPosition.outside,
+                SizedBox(
+                  height: 300,
+                  child: SfCartesianChart(
+                    zoomPanBehavior: _zoomPanBehavior,
+                    trackballBehavior: TrackballBehavior(
+                      enable: true,
+                      tooltipSettings: const InteractiveTooltip(enable: true),
+                    ),
+                    primaryXAxis: DateTimeAxis(
+                      majorGridLines: const MajorGridLines(width: 0),
+                      dateFormat: _selectedTimeframe == '1D'
+                          ? DateFormat.Hm()
+                          : DateFormat.MMMd(),
+                    ),
+                    primaryYAxis: NumericAxis(
+                      opposedPosition: true,
+                      majorGridLines:
+                          const MajorGridLines(width: 0.5, dashArray: [5, 5]),
+                      numberFormat: NumberFormat.currency(
+                        symbol: 'ETB ',
+                        decimalDigits: 2,
+                      ),
+                    ),
+                    series: <CartesianSeries>[
+                      AreaSeries<Map<String, dynamic>, DateTime>(
+                        dataSource: _getChartData(),
+                        xValueMapper: (data, _) => data['timestamp'],
+                        yValueMapper: (data, _) => data['volume'],
+                        opacity: 0.3,
+                        name: lang.translate('volume'),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            theme.colorScheme.primary.withValues(alpha: 0.3),
+                            theme.colorScheme.primary.withValues(alpha: 0.1),
+                          ],
+                        ),
+                      ),
+                      LineSeries<Map<String, dynamic>, DateTime>(
+                        dataSource: _getChartData(),
+                        xValueMapper: (data, _) => data['timestamp'],
+                        yValueMapper: (data, _) => data['value'],
+                        name: lang.translate('market_index'),
+                        color: theme.colorScheme.primary,
+                        width: 2,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMarketDepthChart(ThemeData theme) {
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text('Market Depth', style: theme.textTheme.titleLarge),
-          ),
-          SizedBox(
-            height: 300,
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: true),
-                titlesData: const FlTitlesData(show: true),
-                borderData: FlBorderData(show: true),
-                lineBarsData: [
-                  // Bid Line
-                  LineChartBarData(
-                    spots: _generateBidLine(),
-                    isCurved: true,
-                    color: Colors.green,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-                  // Ask Line
-                  LineChartBarData(
-                    spots: _generateAskLine(),
-                    isCurved: true,
-                    color: Colors.red,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -267,189 +364,316 @@ class _MarketScreenState extends State<MarketScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final ethiopianDate = EthiopianCalendar.getCurrentDate();
-    final Color marketStatusColor = _isMarketOpen ? Colors.green : Colors.grey;
-    final languageProvider = Provider.of<LanguageProvider>(context);
+    final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(languageProvider.translate('market')),
+        title: Text(lang.translate('market')),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(160),
           child: Column(
             children: [
-              // Market Status Banner
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: marketStatusColor.withAlpha(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _isMarketOpen ? Icons.circle : Icons.circle_outlined,
-                          size: 12,
-                          color: marketStatusColor,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(_marketStatus),
-                      ],
-                    ),
-                    Text(
-                      '${ethiopianDate['monthName']} ${ethiopianDate['day']}, ${ethiopianDate['year']}',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search stocks...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('All'),
-                      selected: _selectedSector == 'All',
-                      onSelected: (selected) =>
-                          setState(() => _selectedSector = 'All'),
-                    ),
-                    const SizedBox(width: 8),
-                    ...EthioData.getSectors().map<Widget>((sector) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(sector),
-                            selected: _selectedSector == sector,
-                            onSelected: (selected) =>
-                                setState(() => _selectedSector = sector),
-                          ),
-                        )),
-                  ],
-                ),
-              ),
+              _buildMarketStatusBanner(theme, lang),
+              _buildSearchBar(theme, lang),
+              _buildSectorFilter(lang),
               TabBar(
                 controller: _tabController,
+                isScrollable: true,
                 tabs: [
-                  Tab(text: languageProvider.translate('market_data')),
-                  Tab(text: languageProvider.translate('performance')),
-                  Tab(text: languageProvider.translate('market_depth')),
+                  Tab(text: lang.translate('market_data')),
+                  Tab(text: lang.translate('performance')),
+                  Tab(text: lang.translate('market_depth')),
                 ],
               ),
             ],
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildMarketDataTab(theme),
-          Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildMarketIndexChart(theme),
-                    const SizedBox(height: 16),
-                    _buildSectorPerformanceChart(theme),
-                  ],
-                ),
+      body: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    lang.translate('loading_market_data'),
+                    style: GoogleFonts.spaceGrotesk(),
+                  ),
+                ],
               ),
-            ],
-          ),
-          Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildMarketDepthChart(theme),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildMarketDataTab(theme, lang),
+                _buildPerformanceTab(theme, lang),
+                _buildMarketDepthTab(theme, lang),
+              ],
+            ),
     );
   }
 
-  Widget _buildMarketDataTab(ThemeData theme) {
+  Widget _buildMarketDataTab(ThemeData theme, LanguageProvider lang) {
+    if (filteredData.isEmpty) {
+      return Center(
+        child: Text(
+          lang.translate('no_stocks_found'),
+          style: GoogleFonts.spaceGrotesk(),
+        ),
+      );
+    }
+
     return ListView.builder(
       itemCount: filteredData.length,
       itemBuilder: (context, index) {
         final data = filteredData[index];
         final isPositiveChange = data['change'] >= 0;
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: ListTile(
-            title: Text(
-              data['name'],
-              style: theme.textTheme.titleMedium,
-            ),
-            subtitle: Row(
-              children: [
-                Text(data['symbol'], style: theme.textTheme.bodyMedium),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                        color: theme.colorScheme.outline.withAlpha(128)),
-                  ),
-                  child: Text(
-                    data['sector'],
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${data['currency']} ${data['price'].toStringAsFixed(2)}',
-                  style: theme.textTheme.titleMedium,
-                ),
-                Text(
-                  '${isPositiveChange ? '+' : ''}${data['change'].toStringAsFixed(2)}%',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: isPositiveChange ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            onTap: () {
-              Navigator.push(
+        return FadeInUp(
+          duration: Duration(milliseconds: 200 + (index * 50)),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => StockDetailScreen(stockData: data),
                 ),
-              );
-            },
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['name'],
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                data['symbol'],
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  lang.translate(data['sector'].toLowerCase()),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${data['currency']} ${data['price'].toStringAsFixed(2)}',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPositiveChange
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPositiveChange
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward,
+                                size: 12,
+                                color: isPositiveChange
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${isPositiveChange ? '+' : ''}${data['change'].toStringAsFixed(2)}%',
+                                style: GoogleFonts.spaceGrotesk(
+                                  color: isPositiveChange
+                                      ? Colors.green
+                                      : Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPerformanceTab(ThemeData theme, LanguageProvider lang) {
+    return ListView(
+      children: [
+        _buildMarketIndexChart(theme, lang),
+        const SizedBox(height: 16),
+        _buildSectorPerformanceChart(theme, lang),
+      ],
+    );
+  }
+
+  Widget _buildMarketDepthTab(ThemeData theme, LanguageProvider lang) {
+    return ListView(
+      children: [
+        _buildMarketDepthChart(theme, lang),
+      ],
+    );
+  }
+
+  Widget _buildSectorPerformanceChart(ThemeData theme, LanguageProvider lang) {
+    final sectorWeights = EthioData.getSectorWeights(ethioMarketData);
+
+    return FadeInUp(
+      duration: const Duration(milliseconds: 600),
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    lang.translate('sector_performance'),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 300,
+                  child: SfCircularChart(
+                    legend: const Legend(
+                        isVisible: true, position: LegendPosition.right),
+                    series: <CircularSeries>[
+                      DoughnutSeries<MapEntry<String, double>, String>(
+                        dataSource: sectorWeights.entries.toList(),
+                        xValueMapper: (data, _) => data.key,
+                        yValueMapper: (data, _) => data.value,
+                        dataLabelSettings: const DataLabelSettings(
+                          isVisible: true,
+                          labelPosition: ChartDataLabelPosition.outside,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMarketDepthChart(ThemeData theme, LanguageProvider lang) {
+    return FadeInUp(
+      duration: const Duration(milliseconds: 600),
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    lang.translate('market_depth'),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 300,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: const FlGridData(show: true),
+                      titlesData: const FlTitlesData(show: true),
+                      borderData: FlBorderData(show: true),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: _generateBidLine(),
+                          isCurved: true,
+                          color: Colors.green,
+                          barWidth: 2,
+                          dotData: const FlDotData(show: false),
+                        ),
+                        LineChartBarData(
+                          spots: _generateAskLine(),
+                          isCurved: true,
+                          color: Colors.red,
+                          barWidth: 2,
+                          dotData: const FlDotData(show: false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
