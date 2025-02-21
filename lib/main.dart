@@ -3,8 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options_web.dart';
+import 'utils/web_utils.dart';
+
 import 'screens/home_screen.dart';
 import 'screens/market_screen.dart';
 import 'screens/portfolio_screen.dart';
@@ -18,38 +19,39 @@ import 'providers/language_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  if (shouldInitializeApp()) {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey('language')) {
+      await prefs.setString('language', 'en');
+    }
 
-  final prefs = await SharedPreferences.getInstance();
-  // Set default language to English if not set
-  if (!prefs.containsKey('language')) {
-    await prefs.setString('language', 'en');
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: FirebaseOptionsWeb.firebaseConfig['apiKey']!,
+        authDomain: FirebaseOptionsWeb.firebaseConfig['authDomain']!,
+        projectId: FirebaseOptionsWeb.firebaseConfig['projectId']!,
+        storageBucket: FirebaseOptionsWeb.firebaseConfig['storageBucket']!,
+        messagingSenderId:
+            FirebaseOptionsWeb.firebaseConfig['messagingSenderId']!,
+        appId: FirebaseOptionsWeb.firebaseConfig['appId']!,
+        measurementId: FirebaseOptionsWeb.firebaseConfig['measurementId']!,
+      ),
+    );
+
+    // Initialize Analytics
+    final analytics = FirebaseAnalytics.instance;
+
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
+        ],
+        child: MyApp(analytics: analytics),
+      ),
+    );
   }
-
-  await Firebase.initializeApp(
-    options: FirebaseOptions(
-      apiKey: FirebaseOptionsWeb.firebaseConfig['apiKey']!,
-      authDomain: FirebaseOptionsWeb.firebaseConfig['authDomain']!,
-      projectId: FirebaseOptionsWeb.firebaseConfig['projectId']!,
-      storageBucket: FirebaseOptionsWeb.firebaseConfig['storageBucket']!,
-      messagingSenderId:
-          FirebaseOptionsWeb.firebaseConfig['messagingSenderId']!,
-      appId: FirebaseOptionsWeb.firebaseConfig['appId']!,
-      measurementId: FirebaseOptionsWeb.firebaseConfig['measurementId']!,
-    ),
-  );
-
-  // Initialize Analytics
-  final analytics = FirebaseAnalytics.instance;
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
-      ],
-      child: MyApp(analytics: analytics),
-    ),
-  );
 }
 
 class MyApp extends StatefulWidget {
