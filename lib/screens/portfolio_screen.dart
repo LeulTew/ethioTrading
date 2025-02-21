@@ -220,7 +220,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                       dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       ),
                     ),
                   ],
