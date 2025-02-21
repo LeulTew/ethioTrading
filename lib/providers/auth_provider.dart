@@ -38,9 +38,8 @@ class AuthProvider with ChangeNotifier {
       _userData = await _authService.getCurrentUser();
     } catch (e) {
       _error = _getTranslatedError(e);
-      _userData = null;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> signIn(String email, String password) async {
@@ -79,15 +78,6 @@ class AuthProvider with ChangeNotifier {
     return 'server_error';
   }
 
-  Future<UserCredential> signInWithEmailAndPassword(
-      String email, String password) async {
-    final credential =
-        await _authService.signInWithEmailAndPassword(email, password);
-    _user = credential.user;
-    notifyListeners();
-    return credential;
-  }
-
   Future<void> register(String email, String password, String username) async {
     _isLoading = true;
     _error = null;
@@ -122,15 +112,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<UserCredential> registerWithEmailAndPassword(
-      String email, String password, String username) async {
-    final credential = await _authService.registerWithEmailAndPassword(
-        email, password, username);
-    _user = credential.user;
-    notifyListeners();
-    return credential;
-  }
-
   Future<void> signOut() async {
     _isLoading = true;
     notifyListeners();
@@ -151,21 +132,6 @@ class AuthProvider with ChangeNotifier {
 
     try {
       await _authService.updateUserProfile(_user!.uid, data);
-      await _loadUserData();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> updatePreferences(Map<String, dynamic> preferences) async {
-    if (_user == null) return;
-
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await _authService.updateUserPreferences(_user!.uid, preferences);
       await _loadUserData();
     } finally {
       _isLoading = false;

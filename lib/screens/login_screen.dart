@@ -70,12 +70,10 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
       );
 
-      if (!mounted) return;
-
+      if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, '/');
     } catch (e) {
-      if (!mounted) return;
-
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(

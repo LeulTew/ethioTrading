@@ -507,8 +507,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             SizedBox(
               height: 200,
               child: SfCartesianChart(
-                primaryXAxis: NumericAxis(),
-                primaryYAxis: NumericAxis(),
+                primaryXAxis: const NumericAxis(),
+                primaryYAxis: const NumericAxis(),
                 series: _getMarketDepthSeries(),
               ),
             ),
@@ -564,8 +564,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             SizedBox(
               height: 200,
               child: SfCartesianChart(
-                primaryXAxis: DateTimeAxis(),
-                primaryYAxis: NumericAxis(),
+                primaryXAxis: const DateTimeAxis(),
+                primaryYAxis: const NumericAxis(),
                 series: _getVolumeSeries(),
               ),
             ),

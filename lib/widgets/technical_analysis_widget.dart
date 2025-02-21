@@ -256,8 +256,8 @@ class _TechnicalAnalysisWidgetState extends State<TechnicalAnalysisWidget> {
           SizedBox(
             height: 300,
             child: SfCartesianChart(
-              primaryXAxis: NumericAxis(),
-              primaryYAxis: NumericAxis(),
+              primaryXAxis: const NumericAxis(),
+              primaryYAxis: const NumericAxis(),
               series: <CartesianSeries>[
                 LineSeries<double, int>(
                   dataSource: prices,

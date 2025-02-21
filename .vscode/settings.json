@@ -1,4 +1,15 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+    "dart.flutterRunAdditionalArgs": [
+        "--web-port=3000",
+        "--web-renderer=html",
+        "--web-browser-flag=--disable-web-security",
+        "--web-browser-flag=--disable-site-isolation-trials"
+    ],
+    "dart.previewFlutterUiGuides": true,
+    "dart.openDevTools": "flutter",
+    "dart.debugExternalPackageLibraries": false,
+    "dart.debugSdkLibraries": false,
+    "debug.javascript.usePreview": false
 }

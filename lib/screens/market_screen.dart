@@ -110,12 +110,11 @@ class _MarketScreenState extends State<MarketScreen>
                     ? DateFormat.Hm()
                     : DateFormat.MMMd(),
               ),
-              primaryYAxis: NumericAxis(
+              primaryYAxis: const NumericAxis(
                 opposedPosition: true,
-                majorGridLines:
-                    const MajorGridLines(width: 0.5, dashArray: [5, 5]),
+                majorGridLines: MajorGridLines(width: 0.5, dashArray: [5, 5]),
               ),
-              series: <ChartSeries>[
+              series: <CartesianSeries>[
                 // Area Series for volume
                 AreaSeries<Map<String, dynamic>, DateTime>(
                   dataSource: _getChartData(),

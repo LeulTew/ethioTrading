@@ -31,7 +31,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +43,32 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# For VS Code debugging
+.vscode/
+.edge_data/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build directories
+build/
+.dart_tool/
+.pub/
+.pub-cache/
+
+# IDE specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Debug session files
+*.log
+debug_session/
+web_debug/
+
+# Edge browser debug data
+.edge_data/
+debug_data/
