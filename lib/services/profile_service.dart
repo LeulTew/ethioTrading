@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:location/location.dart' as loc;
 import 'package:geolocator/geolocator.dart';
+import 'package:logging/logging.dart';
 
 class ProfileService {
+  final _logger = Logger('ProfileService');
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final loc.Location _location = loc.Location();
@@ -25,7 +27,7 @@ class ProfileService {
           };
         }
       } catch (e) {
-        print('Location error: $e');
+        _logger.warning('Location error: $e');
         // Continue without location if there's an error
       }
     }
@@ -53,7 +55,7 @@ class ProfileService {
         return await _location.getLocation();
       }
     } catch (e) {
-      print('Primary location service failed: $e');
+      _logger.warning('Primary location service failed: $e');
     }
 
     // Fall back to Geolocator if primary service fails
@@ -74,7 +76,7 @@ class ProfileService {
         desiredAccuracy: LocationAccuracy.high,
       );
     } catch (e) {
-      print('Backup location service failed: $e');
+      _logger.warning('Backup location service failed: $e');
       return null;
     }
   }
@@ -96,7 +98,7 @@ class ProfileService {
       });
       return true;
     } catch (e) {
-      print('Error updating verification status: $e');
+      _logger.severe('Error updating verification status: $e');
       return false;
     }
   }

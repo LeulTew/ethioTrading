@@ -3,44 +3,70 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Light Theme Colors
-  static const Color _lightPrimary = Color(0xFF1B5E20);
-  static const Color _lightSecondary = Color(0xFF2E7D32);
-  static const Color _lightBackground = Color(0xFFF5F5F5);
+  // Light Theme Colors - Enhanced
+  static const Color _lightPrimary = Color(0xFF2E3192); // Rich royal blue
+  static const Color _lightSecondary = Color(0xFF00B0FF); // Electric blue
+  static const Color _lightBackground = Color(0xFFF9FAFC); // Premium off-white
   static const Color _lightSurface = Colors.white;
-  static const Color _lightError = Color(0xFFB00020);
+  static const Color _lightError = Color(0xFFE53935); // Vibrant red
 
-  // Dark Theme Colors
-  static const Color _darkPrimary = Color(0xFF81C784);
-  static const Color _darkSecondary = Color(0xFF82B086);
-  static const Color _darkBackground = Color(0xFF121212);
-  static const Color _darkSurface = Color(0xFF1E1E1E);
-  static const Color _darkError = Color(0xFFCF6679);
-
-  // Trading Colors
-  static const Color bullish = Color(0xFF00C853);
-  static const Color bearish = Color(0xFFD50000);
-  static const Color neutral = Color(0xFF757575);
-
-  // Chart Colors
-  static const List<Color> chartColors = [
-    Color(0xFF2196F3), // Blue
-    Color(0xFFFFA726), // Orange
-    Color(0xFF66BB6A), // Green
-    Color(0xFFEF5350), // Red
-    Color(0xFF8E24AA), // Purple
-    Color(0xFF26A69A), // Teal
+  // Gradient Colors - More sophisticated
+  static const List<Color> primaryGradient = [
+    Color(0xFF3A1C71), // Deep indigo
+    Color(0xFF4736B3), // Rich royal blue
+    Color(0xFF5E60CE), // Periwinkle
   ];
 
-  // Technical Indicator Colors
-  static const Color macdLine = Color(0xFF2196F3);
-  static const Color signalLine = Color(0xFFFFA726);
-  static const Color histogram = Color(0xFF66BB6A);
-  static const Color rsiLine = Color(0xFF26A69A);
-  static const Color bollingerBands = Color(0xFF8E24AA);
-  static const Color movingAverage = Color(0xFFEF5350);
+  static const List<Color> accentGradient = [
+    Color(0xFF00B4DB), // Bright cyan
+    Color(0xFF0083B0), // Azure
+    Color(0xFF00608B), // Deep azure
+  ];
+
+  // Additional gradients for premium look
+  static const List<Color> successGradient = [
+    Color(0xFF11998E), // Teal
+    Color(0xFF38EF7D), // Spring green
+  ];
+
+  static const List<Color> warningGradient = [
+    Color(0xFFFF8008), // Amber
+    Color(0xFFFFC837), // Golden
+  ];
+
+  // Dark Theme Colors - More sophisticated
+  static const Color _darkPrimary = Color(0xFF6A5ACD); // Slate blue
+  static const Color _darkSecondary = Color(0xFF56CCF2); // Sky blue
+  static const Color _darkBackground = Color(0xFF121212); // Deep black
+  static const Color _darkSurface = Color(0xFF1D1F2B); // Rich dark blue-gray
+  static const Color _darkError = Color(0xFFFF5252); // Bright red
+
+  // Trading Colors - More vibrant
+  static const Color bullish = Color(0xFF00E676); // Bright mint green
+  static const Color bearish = Color(0xFFFF3D00); // Vibrant orange-red
+  static const Color neutral = Color(0xFF9E9E9E); // Medium gray
+
+  // Chart Colors - More distinctive
+  static const List<Color> chartColors = [
+    Color(0xFF5E60CE), // Periwinkle
+    Color(0xFFFF7C43), // Coral
+    Color(0xFF00B4D8), // Ocean blue
+    Color(0xFFFF5252), // Bright red
+    Color(0xFFAA6AE0), // Lavender
+    Color(0xFF2EC4B6), // Turquoise
+    Color(0xFFFFD166), // Mustard
+  ];
+
+  // Technical Indicator Colors - Enhanced
+  static const Color macdLine = Color(0xFF5E60CE); // Periwinkle
+  static const Color signalLine = Color(0xFFFF7C43); // Coral
+  static const Color histogram = Color(0xFF00B4D8); // Ocean blue
+  static const Color rsiLine = Color(0xFF2EC4B6); // Turquoise
+  static const Color bollingerBands = Color(0xFFAA6AE0); // Lavender
+  static const Color movingAverage = Color(0xFFFF5252); // Bright red
 
   static ThemeData lightTheme() {
     return ThemeData(
@@ -53,15 +79,22 @@ class AppTheme {
         error: _lightError,
       ),
       scaffoldBackgroundColor: _lightBackground,
-      cardTheme: const CardTheme(
-        elevation: 2,
+      cardTheme: CardTheme(
+        elevation: 0,
         margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: _lightSurface,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: _lightBackground,
+        backgroundColor: Colors.transparent,
         foregroundColor: _lightPrimary,
+        titleTextStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: _lightPrimary,
+        ),
       ),
       tabBarTheme: const TabBarTheme(
         labelColor: _lightPrimary,

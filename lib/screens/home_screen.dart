@@ -4,9 +4,11 @@ import 'package:animate_do/animate_do.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+import 'dart:ui';
 import '../data/ethio_data.dart';
 import '../utils/ethiopian_utils.dart';
 import '../providers/language_provider.dart';
+import '../theme/app_theme.dart';
 import 'stock_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -65,58 +67,87 @@ class _HomeScreenState extends State<HomeScreen>
 
     return FadeInDown(
       duration: const Duration(milliseconds: 600),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                lang.translate('market_index'),
-                style: theme.textTheme.titleLarge,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppTheme.primaryGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        EthiopianCurrencyFormatter.format(marketIndex['value']),
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            isPositive
-                                ? Icons.arrow_upward
-                                : Icons.arrow_downward,
-                            color: isPositive ? Colors.green : Colors.red,
-                            size: 16,
-                          ),
-                          Text(
-                            '${isPositive ? '+' : ''}${marketIndex['change'].toStringAsFixed(2)}%',
-                            style: TextStyle(
-                              color: isPositive ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lang.translate('market_index'),
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              EthiopianCurrencyFormatter.format(
+                                  marketIndex['value']),
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  _buildMarketStatusBadge(theme, lang),
-                ],
+                            Row(
+                              children: [
+                                Icon(
+                                  isPositive
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  color: isPositive ? Colors.green : Colors.red,
+                                  size: 16,
+                                ),
+                                Text(
+                                  '${isPositive ? '+' : ''}${marketIndex['change'].toStringAsFixed(2)}%',
+                                  style: TextStyle(
+                                    color:
+                                        isPositive ? Colors.green : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        _buildMarketStatusBadge(theme, lang),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildMarketStats(theme, marketStats, lang),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              _buildMarketStats(theme, marketStats, lang),
-            ],
+            ),
           ),
         ),
       ),
@@ -464,7 +495,7 @@ class _HomeScreenState extends State<HomeScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: theme.colorScheme.outline.withAlpha(51), // 0.2 * 255
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
             child: ListTile(
@@ -502,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen>
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 12,
                       color: theme.colorScheme.onSurfaceVariant
-                          .withAlpha(179), // 0.7 * 255
+                          .withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -518,11 +549,9 @@ class _HomeScreenState extends State<HomeScreen>
                     )
                   : null,
               onTap: () {
-                // Mark notification as read
                 setState(() {
                   notification['read'] = true;
                 });
-                // Show notification details
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
@@ -554,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               CircleAvatar(
                 backgroundColor:
-                    theme.colorScheme.primary.withAlpha(26), // 0.1 * 255
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
                 child: Icon(
                   notification['type'] == 'order'
                       ? Icons.receipt_long
@@ -692,7 +721,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMarketChart(ThemeData theme, LanguageProvider lang) {
-    // Generate some mock data points for the chart
     final List<FlSpot> spots = List.generate(24, (index) {
       return FlSpot(index.toDouble(),
           _marketData[index % _marketData.length]['price'] as double);
@@ -729,7 +757,8 @@ class _HomeScreenState extends State<HomeScreen>
                         dotData: const FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: theme.colorScheme.primary.withAlpha(26),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.1),
                         ),
                       ),
                     ],

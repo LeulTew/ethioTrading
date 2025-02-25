@@ -32,11 +32,9 @@ dependencies:
   animate_do: ^3.1.1
   flutter_animate: ^4.5.0
   timeago: ^3.6.0
-  location: ^5.0.3
-  geolocator: ^10.1.0
-  jiffy: ^6.2.1
-  url_launcher: ^6.2.1
-  js: ^0.6.7
+  location: ^5.0.3  # Add this line
+  geolocator: ^10.1.0  # Add this as backup for location services
+  logging: ^1.2.0  # Add logging package
 
 dev_dependencies:
   flutter_test:

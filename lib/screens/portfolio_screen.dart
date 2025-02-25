@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import '../data/mock_data.dart';
 import '../providers/language_provider.dart';
+import '../theme/app_theme.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -88,48 +90,76 @@ class _PortfolioScreenState extends State<PortfolioScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Portfolio Value', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  Text(
-                    currencyFormatter.format(_totalValue),
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: AppTheme.primaryGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 26),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 26),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Portfolio Value',
+                            style: theme.textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(
+                          currencyFormatter.format(_totalValue),
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildGainLossWidget(
+                              'Today',
+                              _todayGain,
+                              isPositiveTodayGain,
+                              theme,
+                              currencyFormatter,
+                            ),
+                            _buildGainLossWidget(
+                              'Total Return',
+                              _totalGain,
+                              isPositiveTotalGain,
+                              theme,
+                              currencyFormatter,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPortfolioChart(theme),
+                        const SizedBox(height: 16),
+                        _buildDistributionChart(theme),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildGainLossWidget(
-                        'Today',
-                        _todayGain,
-                        isPositiveTodayGain,
-                        theme,
-                        currencyFormatter,
-                      ),
-                      _buildGainLossWidget(
-                        'Total Return',
-                        _totalGain,
-                        isPositiveTotalGain,
-                        theme,
-                        currencyFormatter,
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildPortfolioChart(theme),
-          const SizedBox(height: 16),
-          _buildDistributionChart(theme),
         ],
       ),
     );
@@ -226,9 +256,9 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                       barWidth: 2,
                       dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
-                        show: true,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      ),
+                          show: true,
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 26)),
                     ),
                   ],
                 ),
@@ -358,8 +388,8 @@ class _PortfolioScreenState extends State<PortfolioScreen>
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: isBuy
-                  ? Colors.green.withValues(alpha: 0.1)
-                  : Colors.red.withValues(alpha: 0.1),
+                  ? Colors.green.withValues(alpha: 26)
+                  : Colors.red.withValues(alpha: 26),
               child: Icon(
                 isBuy ? Icons.add : Icons.remove,
                 color: isBuy ? Colors.green : Colors.red,
