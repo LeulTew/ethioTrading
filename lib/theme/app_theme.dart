@@ -37,6 +37,11 @@ class AppTheme {
     Color(0xFFFFC837), // Golden
   ];
 
+  static const List<Color> errorGradient = [
+    Color(0xFFE53935), // Vibrant red
+    Color(0xFFFF5252), // Bright red
+  ];
+
   // Dark Theme Colors - More sophisticated
   static const Color _darkPrimary = Color(0xFF6A5ACD); // Slate blue
   static const Color _darkSecondary = Color(0xFF56CCF2); // Sky blue

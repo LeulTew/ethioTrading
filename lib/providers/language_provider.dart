@@ -25,7 +25,18 @@ class LanguageProvider with ChangeNotifier {
   String translate(String key) {
     final translations =
         _currentLanguage == 'en' ? englishTranslations : amharicTranslations;
-    return translations[key] ?? englishTranslations[key] ?? key;
+    String translatedText =
+        translations[key] ?? englishTranslations[key] ?? key;
+
+    // For display purposes, replace underscores with spaces
+    // This ensures clean text in the UI while maintaining underscore keys in code
+    return translatedText;
+  }
+
+  // Format display text by removing underscores and properly capitalizing
+  String formatDisplayText(String text) {
+    // Replace underscores with spaces for display
+    return text.replaceAll('_', ' ');
   }
 
   // Add a method to force language update across all screens
@@ -125,11 +136,14 @@ const Map<String, String> englishTranslations = {
   'high': 'High',
   'low': 'Low',
   'close': 'Close',
-
-  // Trading
-  'buy': 'Buy',
-  'sell': 'Sell',
-  'trade': 'Trade',
+  'search_stocks': 'Search Stocks',
+  'all_sectors': 'All Sectors',
+  'Bank': 'Bank',
+  'Transport': 'Transport',
+  'Telecom': 'Telecom',
+  'Utility': 'Utility',
+  'Agriculture': 'Agriculture',
+  'Manufacturing': 'Manufacturing',
   'order_type': 'Order Type',
   'quantity': 'Quantity',
   'total': 'Total',
@@ -177,6 +191,71 @@ const Map<String, String> englishTranslations = {
 };
 
 const Map<String, String> amharicTranslations = {
+  // Error Messages
+  'error_occurred': 'ስህተት ተከስቷል',
+  'try_again': 'እባክዎ እንደገና ይሞክሩ',
+  'connection_error': 'የግንኙነት ስህተት',
+  'validation_error': 'እባክዎ ግብዓትዎን ያረጋግጡ',
+  'insufficient_funds': 'በቂ ሂሳብ የለም',
+  'invalid_quantity': 'ልክ ያልሆነ መጠን',
+  'invalid_price': 'ልክ ያልሆነ ዋጋ',
+
+  // Trading Levels
+  'trading_level': 'የንግድ ደረጃ',
+  'beginner': 'ጀማሪ',
+  'intermediate': 'መካከለኛ',
+  'advanced': 'የላቀ',
+  'current_level': 'የአሁኑ ደረጃ',
+  'daily_limit': 'የዕለት የንግድ ገደብ',
+  'available_balance': 'ያለው ሂሳብ',
+  'upgrade_level': 'የንግድ ደረጃዎን ያሻሽሉ',
+  'request_upgrade': 'ማሻሻያ ይጠይቁ',
+
+  // Settings & Preferences
+  'preferences': 'ምርጫዎች',
+  'theme': 'ገጽታ',
+  'light_mode': 'ብሩህ ሁነታ',
+  'dark_mode': 'ጨለማ ሁነታ',
+  'system_default': 'የስርዓት ነባሪ',
+
+  // Market Data
+  'market_index': 'የገበያ ማውጫ',
+  'volume': 'መጠን',
+  'change': 'ለውጥ',
+  'market_cap': 'የገበያ ካፒታል',
+  'price': 'ዋጋ',
+  'open': 'መክፈቻ',
+  'high': 'ከፍተኛ',
+  'low': 'ዝቅተኛ',
+  'close': 'መዝጊያ',
+
+  // Additional Market Terms
+  'gainers': 'አትራፊዎች',
+  'losers': 'ኪሳራ የደረሰባቸው',
+  'market_breadth': 'የገበያ ስፋት',
+  'combined': 'የተዋሃደ',
+  'bids': 'ጨማሪዎች',
+  'asks': 'ሻጮች',
+  'order_book': 'የትዕዛዝ መዝገብ',
+  'technical_analysis': 'ቴክኒካዊ ትንተና',
+  'market_order': 'የገበያ ትዕዛዝ',
+  'limit_order': 'የገደብ ትዕዛዝ',
+  'buy': 'ግዛ',
+  'sell': 'ሽጥ',
+  'commission': 'ኮሚሽን',
+  'vat': 'ተጨማሪ እሴት ታክስ',
+  'capital_gains_tax': 'የካፒታል ትርፍ ግብር',
+  'order_executed_successfully': 'ትዕዛዝ በተሳካ ሁኔታ ተፈጽሟል',
+  'order_execution_failed': 'ትዕዛዝ ማስፈጸም አልተሳካም',
+  'overview': 'አጠቃላይ እይታ',
+  'chart': 'ቻርት',
+  'analysis': 'ትንተና',
+  'news': 'ዜና',
+  'loading_data': 'መረጃ በመጫን ላይ',
+  'trade': 'ንግድ',
+  'company_info': 'የኩባንያ መረጃ',
+  'key_statistics': 'ቁልፍ ስታትስቲክስ',
+  'technical_indicators': 'ቴክኒካዊ አመልካቾች',
   'app_title': 'የኢትዮጵያ የገበያ መተግበሪያ',
   'home': 'መነሻ',
   'market': 'ገበያ',
@@ -217,20 +296,16 @@ const Map<String, String> amharicTranslations = {
   'security_notifications': 'የደህንነት ማሳወቂያዎች',
   'activity_log': 'የእንቅስቃሴ ምዝግብ ማስታወሻ',
   'market_overview': 'የገበያ አጠቃላይ እይታ',
-  'top_movers': 'ከፍተኛ እንቅስቃሴ',
+  'top_movers': 'ከፍተኛ እንቅስቃሴ ያላቸው',
   'sector_performance': 'የዘርፍ አፈጻጸም',
-  'market_index': 'የገበያ ማውጫ',
-  'volume': 'መጠን',
-  'change': 'ለውጥ',
-  'market_cap': 'የገበያ ካፒታል',
-  'price': 'ዋጋ',
-  'open': 'ክፈት',
-  'high': 'ከፍተኛ',
-  'low': 'ዝቅተኛ',
-  'close': 'ዝጋ',
-  'buy': 'ግዛ',
-  'sell': 'ሽጥ',
-  'trade': 'ንግድ',
+  'search_stocks': 'አክሲዮኖችን ይፈልጉ',
+  'all_sectors': 'ሁሉም ዘርፎች',
+  'Bank': 'ባንክ',
+  'Transport': 'ትራንስፖርት',
+  'Telecom': 'ቴሌኮም',
+  'Utility': 'አገልግሎት',
+  'Agriculture': 'እርሻ',
+  'Manufacturing': 'ማምረቻ',
   'order_type': 'የትእዛዝ አይነት',
   'quantity': 'ብዛት',
   'total': 'ጠቅላላ',
@@ -261,4 +336,5 @@ const Map<String, String> amharicTranslations = {
   'invalid_credentials': 'ትክክል ያልሆነ ኢሜይል ወይም የይለፍ ቃል',
   'network_error': 'የኔትዎርክ ግንኙነት ስህተት',
   'server_error': 'የサーバー ስህተት ተከስቷል',
+  'Summary': 'ማጠቃለያ',
 };

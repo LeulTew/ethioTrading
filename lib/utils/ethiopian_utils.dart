@@ -227,6 +227,22 @@ class EthiopianMarketHours {
     if (hour > 13) return 'closing';
     return 'main';
   }
+
+  static Map<String, dynamic> getMarketHours() {
+    final now = DateTime.now().toLocal();
+    final isOpen = isMarketOpen();
+    final status = getMarketStatus();
+    final phase = getMarketPhase();
+
+    return {
+      'isOpen': isOpen,
+      'status': status,
+      'phase': phase,
+      'openTime': '9:00 AM',
+      'closeTime': '2:30 PM',
+      'currentTime': DateFormat('h:mm a').format(now),
+    };
+  }
 }
 
 class TradingValidator {
