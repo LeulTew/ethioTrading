@@ -70,38 +70,52 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: AppTheme.primaryGradient,
+            colors: [
+              Color(0xFF6A11CB), // Deep purple
+              Color(0xFF2575FC), // Bright blue
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF6A11CB).withValues(alpha: 0.3),
+              blurRadius: 16,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      lang.translate('market_index'),
-                      style: theme.textTheme.titleLarge,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          lang.translate('market_index'),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        _buildMarketStatusBadge(theme, lang),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -115,31 +129,46 @@ class _HomeScreenState extends State<HomeScreen>
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
+                                letterSpacing: -0.5,
                               ),
                             ),
-                            Row(
-                              children: [
-                                Icon(
-                                  isPositive
-                                      ? Icons.arrow_upward
-                                      : Icons.arrow_downward,
-                                  color: isPositive ? Colors.green : Colors.red,
-                                  size: 16,
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isPositive 
+                                    ? AppTheme.successGradient 
+                                    : AppTheme.errorGradient,
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
                                 ),
-                                Text(
-                                  '${isPositive ? '+' : ''}${marketIndex['change'].toStringAsFixed(2)}%',
-                                  style: TextStyle(
-                                    color:
-                                        isPositive ? Colors.green : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isPositive
+                                        ? Icons.arrow_upward
+                                        : Icons.arrow_downward,
+                                    color: Colors.white,
+                                    size: 16,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${isPositive ? '+' : ''}${marketIndex['change'].toStringAsFixed(2)}%',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        _buildMarketStatusBadge(theme, lang),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -156,29 +185,40 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildMarketStats(
       ThemeData theme, Map<String, dynamic> stats, LanguageProvider lang) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildStatItem(
-          theme,
-          lang.translate('volume'),
-          EthiopianCurrencyFormatter.formatVolume(stats['totalVolume']),
-          Icons.bar_chart,
+        Expanded(
+          child: _buildStatItem(
+            theme,
+            lang.translate('volume'),
+            EthiopianCurrencyFormatter.formatVolume(stats['totalVolume']),
+            Icons.bar_chart,
+            color: Colors.white,
+            isInCard: true,
+          ),
         ),
-        _buildStatItem(
-          theme,
-          lang.translate('advancers'),
-          stats['advancers'].toString(),
-          Icons.trending_up,
-          color: Colors.green,
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatItem(
+            theme,
+            lang.translate('advancers'),
+            stats['advancers'].toString(),
+            Icons.trending_up,
+            color: Colors.white,
+            isInCard: true,
+          ),
         ),
-        _buildStatItem(
-          theme,
-          lang.translate('decliners'),
-          stats['decliners'].toString(),
-          Icons.trending_down,
-          color: Colors.red,
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatItem(
+            theme,
+            lang.translate('decliners'),
+            stats['decliners'].toString(),
+            Icons.trending_down,
+            color: Colors.white,
+            isInCard: true,
+          ),
         ),
       ],
     );
@@ -186,12 +226,22 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildStatItem(
       ThemeData theme, String label, String value, IconData icon,
-      {Color? color}) {
+      {Color? color, bool isInCard = false}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: (color ?? theme.colorScheme.primary).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: isInCard 
+            ? Colors.white.withValues(alpha: 0.1) 
+            : (color ?? theme.colorScheme.primary).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isInCard ? [] : [
+          BoxShadow(
+            color: (color ?? theme.colorScheme.primary).withValues(alpha: 0.05),
+            blurRadius: 8,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,41 +249,54 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: color ?? theme.colorScheme.primary),
-              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isInCard 
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : (color ?? theme.colorScheme.primary).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon,
+                    size: 14, color: isInCard ? Colors.white : (color ?? theme.colorScheme.primary)),
+              ),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color:
-                      theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
+                  color: isInCard 
+                      ? Colors.white.withValues(alpha: 0.9)
+                      : theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: color,
+              color: isInCard ? Colors.white : (color ?? theme.colorScheme.onSurface),
+              letterSpacing: -0.3,
             ),
           ),
         ],
       ),
     );
   }
-
   Widget _buildMarketStatusBadge(ThemeData theme, LanguageProvider lang) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: _isMarketOpen
-            ? Colors.green.withValues(alpha: 0.1)
+            ? const Color(0xFF059669).withValues(alpha: 0.1)
             : theme.colorScheme.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: _isMarketOpen
-              ? Colors.green.withValues(alpha: 0.3)
+              ? const Color(0xFF059669).withValues(alpha: 0.3)
               : theme.colorScheme.error.withValues(alpha: 0.3),
         ),
       ),
@@ -245,15 +308,30 @@ class _HomeScreenState extends State<HomeScreen>
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isMarketOpen ? Colors.green : theme.colorScheme.error,
+              color: _isMarketOpen
+                  ? const Color(0xFF059669)
+                  : theme.colorScheme.error,
+              boxShadow: [
+                BoxShadow(
+                  color: (_isMarketOpen
+                          ? const Color(0xFF059669)
+                          : theme.colorScheme.error)
+                      .withValues(alpha: 0.3),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
           Text(
             lang.translate(_isMarketOpen ? 'market_open' : 'market_closed'),
             style: theme.textTheme.bodySmall?.copyWith(
-              color: _isMarketOpen ? Colors.green : theme.colorScheme.error,
+              color: _isMarketOpen
+                  ? const Color(0xFF059669)
+                  : theme.colorScheme.error,
               fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -353,30 +431,86 @@ class _HomeScreenState extends State<HomeScreen>
         width: 160,
         margin: const EdgeInsets.only(left: 16),
         child: Card(
-          color: theme.colorScheme.surface,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stock['symbol'],
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  EthiopianCurrencyFormatter.format(stock['price']),
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${stock['change'] >= 0 ? '+' : ''}${stock['change'].toStringAsFixed(2)}%',
-                  style: TextStyle(
-                    color: stock['change'] >= 0 ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
+          elevation: 2,
+          shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.08),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.05),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color:
+                              (stock['change'] >= 0 ? Colors.green : Colors.red)
+                                  .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          stock['change'] >= 0
+                              ? Icons.trending_up
+                              : Icons.trending_down,
+                          color:
+                              stock['change'] >= 0 ? Colors.green : Colors.red,
+                          size: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          stock['symbol'],
+                          style: GoogleFonts.spaceGrotesk(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(
+                    EthiopianCurrencyFormatter.format(stock['price']),
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (stock['change'] >= 0 ? Colors.green : Colors.red)
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${stock['change'] >= 0 ? '+' : ''}${stock['change'].toStringAsFixed(2)}%',
+                      style: GoogleFonts.spaceGrotesk(
+                        color: stock['change'] >= 0
+                            ? Colors.green[700]
+                            : Colors.red[700],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

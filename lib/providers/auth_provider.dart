@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   User? _user;
   Map<String, dynamic>? _userData;
   bool _isLoading = false;
@@ -158,11 +159,10 @@ class AuthProvider with ChangeNotifier {
       if (user == null) throw 'User not authenticated';
 
       // Start a batch write
-      final batch = FirebaseFirestore.instance.batch();
+      final batch = _firestore.batch();
 
       // Get user document reference
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userRef = _firestore.collection('users').doc(user.uid);
 
       // Get current user data
       final userData = (await userRef.get()).data() ?? {};
@@ -202,7 +202,7 @@ class AuthProvider with ChangeNotifier {
       }
 
       // Add trade to history
-      final tradeRef = FirebaseFirestore.instance.collection('trades').doc();
+      final tradeRef = _firestore.collection('trades').doc();
       batch.set(tradeRef, {
         ...tradeData,
         'userId': user.uid,
@@ -230,8 +230,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(_user!.uid);
+      final userRef = _firestore.collection('users').doc(_user!.uid);
 
       await userRef.update({
         'verificationStatus': 'pending',

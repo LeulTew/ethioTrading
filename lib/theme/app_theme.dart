@@ -7,41 +7,35 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Light Theme Colors - Enhanced
-  static const Color _lightPrimary = Color(0xFF2E3192); // Rich royal blue
-  static const Color _lightSecondary = Color(0xFF00B0FF); // Electric blue
-  static const Color _lightBackground = Color(0xFFF9FAFC); // Premium off-white
+  static const Color _lightPrimary = Color(0xFF2563EB); // Modern blue
+  static const Color _lightSecondary = Color(0xFF0EA5E9); // Sky blue
+  static const Color _lightBackground = Color(0xFFF8FAFC); // Refined off-white
   static const Color _lightSurface = Colors.white;
-  static const Color _lightError = Color(0xFFE53935); // Vibrant red
-
+  static const Color _lightError = Color(0xFFDC2626); // Modern red
   // Gradient Colors - More sophisticated
   static const List<Color> primaryGradient = [
-    Color(0xFF3A1C71), // Deep indigo
-    Color(0xFF4736B3), // Rich royal blue
-    Color(0xFF5E60CE), // Periwinkle
+    Color(0xFF2563EB), // Modern blue
+    Color(0xFF3B82F6), // Bright blue
+    Color(0xFF60A5FA), // Light blue
   ];
-
   static const List<Color> accentGradient = [
-    Color(0xFF00B4DB), // Bright cyan
-    Color(0xFF0083B0), // Azure
-    Color(0xFF00608B), // Deep azure
+    Color(0xFF0EA5E9), // Sky blue
+    Color(0xFF38BDF8), // Light sky blue
+    Color(0xFF7DD3FC), // Extra light sky blue
   ];
-
   // Additional gradients for premium look
   static const List<Color> successGradient = [
-    Color(0xFF11998E), // Teal
-    Color(0xFF38EF7D), // Spring green
+    Color(0xFF059669), // Modern emerald
+    Color(0xFF34D399), // Light emerald
   ];
-
   static const List<Color> warningGradient = [
-    Color(0xFFFF8008), // Amber
-    Color(0xFFFFC837), // Golden
+    Color(0xFFF59E0B), // Modern amber
+    Color(0xFFFBBF24), // Light amber
   ];
-
   static const List<Color> errorGradient = [
-    Color(0xFFE53935), // Vibrant red
-    Color(0xFFFF5252), // Bright red
+    Color(0xFFDC2626), // Modern red
+    Color(0xFFEF4444), // Light red
   ];
-
   // Dark Theme Colors - More sophisticated
   static const Color _darkPrimary = Color(0xFF6A5ACD); // Slate blue
   static const Color _darkSecondary = Color(0xFF56CCF2); // Sky blue

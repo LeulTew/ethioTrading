@@ -202,14 +202,17 @@ class _MarketScreenState extends State<MarketScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: AppTheme.primaryGradient,
+          colors: [
+            Color(0xFF4A00E0), // Deep purple
+            Color(0xFF2563EB), // Vibrant blue
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGradient.last.withValues(alpha: 0.25),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -239,49 +242,60 @@ class _MarketScreenState extends State<MarketScreen>
             ],
           ),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildSummaryItem(
-                  icon: Icons.arrow_upward,
-                  label: lang.translate('gainers'),
-                  value: '${summary['gainers']}',
-                  valueColor: AppTheme.bullish,
-                  bgColor: Colors.white.withValues(alpha: 0.15),
-                ),
-                const SizedBox(width: 8),
-                _buildSummaryItem(
-                  icon: Icons.arrow_downward,
-                  label: lang.translate('losers'),
-                  value: '${summary['losers']}',
-                  valueColor: AppTheme.bearish,
-                  bgColor: Colors.white.withValues(alpha: 0.15),
-                ),
-                const SizedBox(width: 8),
-                _buildSummaryItem(
+          // Reorganized layout with items in a row with proper spacing
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Volume
+              Expanded(
+                flex: 3,
+                child: _buildSummaryItem(
                   icon: Icons.bar_chart,
-                  label:
-                      '${lang.translate('volume')} (${summary['volumeChange']}%)',
+                  label: lang.translate('volume'),
                   value: '${summary['volume']}M',
                   valueColor: double.parse(summary['volumeChange']) >= 0
                       ? AppTheme.bullish
                       : AppTheme.bearish,
                   bgColor: Colors.white.withValues(alpha: 0.15),
                 ),
-                const SizedBox(width: 8),
-                _buildSummaryItem(
-                  icon: Icons.analytics,
-                  label: lang.translate('market_breadth'),
-                  value:
-                      '${(summary['marketBreadth'] * 100).toStringAsFixed(1)}%',
-                  valueColor: summary['marketBreadth'] >= 0.5
-                      ? AppTheme.bullish
-                      : AppTheme.bearish,
+              ),
+              const SizedBox(width: 8),
+              // Advancers
+              Expanded(
+                flex: 2,
+                child: _buildSummaryItem(
+                  icon: Icons.arrow_upward,
+                  label: lang.translate('gainers'),
+                  value: '${summary['gainers']}',
+                  valueColor: AppTheme.bullish,
                   bgColor: Colors.white.withValues(alpha: 0.15),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              // Decliners
+              Expanded(
+                flex: 2,
+                child: _buildSummaryItem(
+                  icon: Icons.arrow_downward,
+                  label: lang.translate('losers'),
+                  value: '${summary['losers']}',
+                  valueColor: AppTheme.bearish,
+                  bgColor: Colors.white.withValues(alpha: 0.15),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Market breadth in a separate row
+          _buildSummaryItem(
+            icon: Icons.analytics,
+            label: lang.translate('market_breadth'),
+            value: '${(summary['marketBreadth'] * 100).toStringAsFixed(1)}%',
+            valueColor: summary['marketBreadth'] >= 0.5
+                ? AppTheme.bullish
+                : AppTheme.bearish,
+            bgColor: Colors.white.withValues(alpha: 0.15),
+            isFullWidth: true,
           ),
         ],
       ),
@@ -294,9 +308,11 @@ class _MarketScreenState extends State<MarketScreen>
     required String value,
     required Color valueColor,
     required Color bgColor,
+    bool isFullWidth = false,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: isFullWidth ? double.infinity : null,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
@@ -313,35 +329,38 @@ class _MarketScreenState extends State<MarketScreen>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: isFullWidth ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: isFullWidth ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
             children: [
-              Icon(icon, color: valueColor, size: 14),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.9),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: valueColor, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ],
+              ),
+              Text(
+                value,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: valueColor,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: valueColor,
-              letterSpacing: 0.5,
-            ),
           ),
         ],
       ),

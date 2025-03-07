@@ -1,55 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <base href="$FLUTTER_BASE_HREF">
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Ethiopian Trading Platform">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ethiopian Trading</title>
+<html>
+  <head>
+    <base href="$FLUTTER_BASE_HREF" />
 
-  <link rel="icon" type="image/png" href="favicon.png"/>
-  <script src="flutter.js" defer></script>
-</head>
-<body>
-  <div id="loading">
-    <style>
-      body {
-        background-color: #FFFFFF;
-      }
-      #loading {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-    </style>
-    Loading...
-  </div>
-  <script>
-    window.addEventListener('load', async function() {
-      var serviceWorkerActivated = false;
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('flutter-first-frame', function () {
-          if (!serviceWorkerActivated) {
-            navigator.serviceWorker.register('flutter_service_worker.js');
-            serviceWorkerActivated = true;
-          }
+    <meta charset="UTF-8" />
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+    <meta name="description" content="An Ethiopian trading application." />
+
+    <!-- iOS meta tags & icons -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="ethio_trading_app" />
+    <link rel="apple-touch-icon" href="icons/Icon-192.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <title>Ethiopian Trading App</title>
+    <link rel="manifest" href="manifest.json" />
+
+    <script>
+      // The value below is injected by flutter build, do not touch.
+      var serviceWorkerVersion = null;
+    </script>
+
+    <!-- This script adds the flutter initialization JS code -->
+    <script src="flutter.js" defer></script>
+  </head>
+  <body>
+    <div id="loading">
+      <style>
+        body {
+          background-color: #ffffff;
+        }
+        #loading {
+          position: fixed;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+      </style>
+      Loading...
+    </div>
+    <script>
+      window.addEventListener("load", function (ev) {
+        // Download main.dart.js
+        _flutter.loader.loadEntrypoint({
+          serviceWorker: {
+            serviceWorkerVersion: serviceWorkerVersion,
+          },
+          onEntrypointLoaded: function (engineInitializer) {
+            engineInitializer.initializeEngine().then(function (appRunner) {
+              appRunner.runApp();
+            });
+          },
         });
-      }
-
-      var loading = document.querySelector('#loading');
-      var scriptTag = document.createElement('script');
-      scriptTag.src = 'main.dart.js';
-      scriptTag.type = 'application/javascript';
-      document.body.appendChild(scriptTag);
-      
-      scriptTag.addEventListener('load', function() {
-        loading.remove();
       });
-    });
-  </script>
-</body>
+    </script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+
+    <script>
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68",
+        authDomain: "ethio-tradding-app-9af0d.firebaseapp.com",
+        projectId: "ethio-tradding-app-9af0d",
+        storageBucket: "ethio-tradding-app-9af0d.firebasestorage.app",
+        messagingSenderId: "1037800105398",
+        appId: "1:1037800105398:web:477e073d91c9a8bf794d17",
+        measurementId: "G-GLFX8LEDJH",
+        databaseURL: "https://ethio-tradding-app-9af0d.firebaseio.com",
+      };
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      firebase.analytics();
+    </script>
+  </body>
 </html>
