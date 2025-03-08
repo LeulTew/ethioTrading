@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import '../models/asset.dart';
+import '../config/env.dart';
 
 class MarketDataService {
   final _logger = Logger('MarketDataService');
@@ -11,13 +12,9 @@ class MarketDataService {
   static const String _alphaVantageBaseUrl =
       'https://www.alphavantage.co/query';
 
-  // You'll need to register for free API keys
-  // Finnhub: https://finnhub.io/register
-  // Alpha Vantage: https://www.alphavantage.co/support/#api-key
-  static const String _finnhubApiKey =
-      'cv5g25pr01qn849vldqgcv5g25pr01qn849vldr0'; // Finnhub API key
-  static const String _alphaVantageApiKey =
-      '9KI85484WMJIQBHF'; // Alpha Vantage API key
+  // API keys from environment configuration
+  final String _finnhubApiKey = Env.finnhubApiKey;
+  final String _alphaVantageApiKey = Env.alphaVantageApiKey;
 
   // List of international stocks to track
   static const List<String> _internationalSymbols = [
@@ -92,6 +89,7 @@ class MarketDataService {
             ownership: 'Public',
             price: price,
             change: changePercent,
+            changePercent: changePercent,
             volume: double.parse(quote['06. volume']),
             marketCap: 0.0, // Not provided in this API
             lastUpdated: DateTime.now(),
@@ -108,49 +106,7 @@ class MarketDataService {
     return null;
   }
 
-  // Fetch stock data from Finnhub API (alternative)
-  // This method is kept as an alternative data source if Alpha Vantage has issues
-  // or for future implementation of additional features
-  Future<Asset?> _fetchStockFromFinnhub(String symbol) async {
-    final url = '$_finnhubBaseUrl/quote?symbol=$symbol&token=$_finnhubApiKey';
 
-    try {
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data.containsKey('c') && data['c'] != null) {
-          final currentPrice = data['c'].toDouble();
-          final openPrice = data['o'].toDouble();
-          final highPrice = data['h'].toDouble();
-          final lowPrice = data['l'].toDouble();
-          final previousClose = data['pc'].toDouble();
-          final changePercent =
-              ((currentPrice - previousClose) / previousClose) * 100;
-
-          return Asset(
-            name: _getCompanyName(symbol),
-            symbol: symbol,
-            sector: 'International',
-            ownership: 'Public',
-            price: currentPrice,
-            change: changePercent,
-            volume: 0.0, // Not provided in this basic endpoint
-            marketCap: 0.0, // Not provided in this basic endpoint
-            lastUpdated: DateTime.now(),
-            dayHigh: highPrice,
-            dayLow: lowPrice,
-            openPrice: openPrice,
-          );
-        }
-      }
-    } catch (e) {
-      _logger.warning('Error fetching Finnhub data for $symbol: $e');
-    }
-
-    return null;
-  }
 
   // Helper method to get company names
   String _getCompanyName(String symbol) {

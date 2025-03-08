@@ -365,10 +365,11 @@ class MockRealtimeMarketService {
 
         // Calculate new price within daily limits
         double newPrice = asset.price + priceChange;
-        if (newPrice > asset.maxDailyPrice) {
-          newPrice = asset.maxDailyPrice;
-        } else if (newPrice < asset.minDailyPrice) {
-          newPrice = asset.minDailyPrice;
+        if (asset.maxDailyPrice != null && newPrice > asset.maxDailyPrice!) {
+          newPrice = asset.maxDailyPrice!;
+        } else if (asset.minDailyPrice != null &&
+            newPrice < asset.minDailyPrice!) {
+          newPrice = asset.minDailyPrice!;
         }
 
         // Round to tickSize
@@ -376,7 +377,7 @@ class MockRealtimeMarketService {
 
         // Update if price has actually changed
         if (newPrice != asset.price) {
-          final updatedAsset = asset.updatePrice(newPrice);
+          final updatedAsset = asset.copyWithPrice(newPrice);
           _assets[i] = updatedAsset;
 
           // Notify listeners

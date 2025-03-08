@@ -116,10 +116,15 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> signOut() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
       await _authService.signOut();
+      _user = null;
+      _userData = null;
+    } catch (e) {
+      _error = _getTranslatedError(e);
     } finally {
       _isLoading = false;
       notifyListeners();

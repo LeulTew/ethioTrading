@@ -47,9 +47,12 @@ class PortfolioItem {
     final totalReturn = currentValue - (quantity * avgPrice);
     final totalReturnPercentage =
         avgPrice > 0 ? (totalReturn / (quantity * avgPrice)) * 100 : 0.0;
-    final dayChange = quantity * (currentPrice - asset.openPrice);
-    final dayChangePercentage = asset.openPrice > 0
-        ? ((currentPrice - asset.openPrice) / asset.openPrice) * 100
+    final dayChange =
+        quantity * (currentPrice - (asset.openPrice ?? currentPrice));
+    final dayChangePercentage = (asset.openPrice ?? currentPrice) > 0
+        ? ((currentPrice - (asset.openPrice ?? currentPrice)) /
+                (asset.openPrice ?? currentPrice)) *
+            100
         : 0.0;
 
     return PortfolioItem(

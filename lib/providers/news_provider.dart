@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/news_article.dart';
 import '../services/news_service.dart';
+import '../services/api_service.dart';
 
 class NewsProvider with ChangeNotifier {
   final NewsService _newsService = NewsService();
+  final ApiService _apiService;
+
   List<NewsArticle> _allNews = [];
   List<NewsArticle> _featuredNews = [];
   List<NewsArticle> _marketNews = [];
   List<NewsArticle> _economyNews = [];
   bool _isLoading = false;
-  String _error = '';
+  String? _error;
   DateTime _lastFetched = DateTime(1900);
+
+  final Map<String, List<Map<String, dynamic>>> _newsByCategory = {};
+
+  NewsProvider({required ApiService apiService}) : _apiService = apiService;
 
   // Getters
   List<NewsArticle> get allNews => _allNews;
@@ -18,7 +25,7 @@ class NewsProvider with ChangeNotifier {
   List<NewsArticle> get marketNews => _marketNews;
   List<NewsArticle> get economyNews => _economyNews;
   bool get isLoading => _isLoading;
-  String get error => _error;
+  String? get error => _error;
 
   // Initialize news data
   Future<void> initializeNews() async {
@@ -61,7 +68,7 @@ class NewsProvider with ChangeNotifier {
   Future<void> fetchNews() async {
     try {
       _isLoading = true;
-      _error = '';
+      _error = null;
       notifyListeners();
 
       // Fetch all news
@@ -163,6 +170,35 @@ class NewsProvider with ChangeNotifier {
     // If we get here, refresh might be needed
     await fetchNews();
     return category.toLowerCase() == 'market' ? _marketNews : _economyNews;
+  }
+
+  // Fetch news for a specific category
+  Future<void> fetchNewsForCategory({String category = 'business'}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final news = await _apiService.fetchNews(category: category);
+      _newsByCategory[category] = news;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Get news by category
+  List<Map<String, dynamic>> getNewsByCategoryFromApi(String category) {
+    return _newsByCategory[category] ?? [];
+  }
+
+  // Clear all news data
+  void clearNews() {
+    _newsByCategory.clear();
+    notifyListeners();
   }
 
   // Refresh news data

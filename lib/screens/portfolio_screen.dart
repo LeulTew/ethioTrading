@@ -16,7 +16,7 @@ class PortfolioScreen extends StatefulWidget {
 
 class _PortfolioScreenState extends State<PortfolioScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabController;
   final List<Map<String, dynamic>> _holdings = [];
   final List<Map<String, dynamic>> _transactions = [];
   double _totalValue = 0;
@@ -78,6 +78,35 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                 _buildTransactionsTab(theme, currencyFormatter),
               ],
             ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2, // Portfolio is selected
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: lang.translate('home'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.show_chart),
+            label: lang.translate('market'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.account_balance_wallet),
+            label: lang.translate('portfolio'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: lang.translate('profile'),
+          ),
+        ],
+        onTap: (index) {
+          if (index != 2) {
+            // Navigate to the appropriate screen
+            final routes = ['/home', '/market', '/portfolio', '/profile'];
+            Navigator.pushReplacementNamed(context, routes[index]);
+          }
+        },
+      ),
     );
   }
 

@@ -56,7 +56,8 @@ class MockDataGenerator {
         sector: company.$3,
         ownership: company.$4,
         price: currentPrice,
-        change: (change / basePrice) * 100,
+        change: change,
+        changePercent: (change / basePrice) * 100,
         volume: volume,
         marketCap: currentPrice * totalShares,
         lastUpdated: DateTime.now(),
@@ -228,7 +229,7 @@ class MockPortfolio {
     for (final holding in holdings) {
       final asset = holding['asset'] as Asset;
       final quantity = holding['quantity'] as double;
-      todayGain += quantity * (asset.price - asset.openPrice);
+      todayGain += quantity * (asset.price - (asset.openPrice ?? asset.price));
     }
     return todayGain;
   }

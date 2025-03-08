@@ -132,9 +132,9 @@ class TradingProvider with ChangeNotifier {
     }
 
     // Check price is within daily limits and follows tick size
-    if (!asset.isValidTradePrice(price)) {
+    if (!asset.isValidPrice(price)) {
       _error =
-          'Invalid price. Must be between ${asset.minDailyPrice.toStringAsFixed(2)} and ${asset.maxDailyPrice.toStringAsFixed(2)} and follow tick size ${asset.tickSize}';
+          'Invalid price. Must be between ${asset.minDailyPrice?.toStringAsFixed(2) ?? "N/A"} and ${asset.maxDailyPrice?.toStringAsFixed(2) ?? "N/A"} and follow tick size ${asset.tickSize}';
       notifyListeners();
       return false;
     }

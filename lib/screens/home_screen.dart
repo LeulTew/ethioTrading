@@ -138,9 +138,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: isPositive 
-                                    ? AppTheme.successGradient 
-                                    : AppTheme.errorGradient,
+                                  colors: isPositive
+                                      ? AppTheme.successGradient
+                                      : AppTheme.errorGradient,
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                 ),
@@ -230,18 +230,21 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isInCard 
-            ? Colors.white.withValues(alpha: 0.1) 
+        color: isInCard
+            ? Colors.white.withValues(alpha: 0.1)
             : (color ?? theme.colorScheme.primary).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: isInCard ? [] : [
-          BoxShadow(
-            color: (color ?? theme.colorScheme.primary).withValues(alpha: 0.05),
-            blurRadius: 8,
-            spreadRadius: 0,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isInCard
+            ? []
+            : [
+                BoxShadow(
+                  color: (color ?? theme.colorScheme.primary)
+                      .withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,23 +255,31 @@ class _HomeScreenState extends State<HomeScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: isInCard 
+                  color: isInCard
                       ? Colors.white.withValues(alpha: 0.2)
-                      : (color ?? theme.colorScheme.primary).withValues(alpha: 0.15),
+                      : (color ?? theme.colorScheme.primary)
+                          .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon,
-                    size: 14, color: isInCard ? Colors.white : (color ?? theme.colorScheme.primary)),
+                    size: 14,
+                    color: isInCard
+                        ? Colors.white
+                        : (color ?? theme.colorScheme.primary)),
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isInCard 
-                      ? Colors.white.withValues(alpha: 0.9)
-                      : theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.3,
+              Flexible(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isInCard
+                        ? Colors.white.withValues(alpha: 0.9)
+                        : theme.textTheme.bodyLarge?.color
+                            ?.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -278,14 +289,18 @@ class _HomeScreenState extends State<HomeScreen>
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: isInCard ? Colors.white : (color ?? theme.colorScheme.onSurface),
+              color: isInCard
+                  ? Colors.white
+                  : (color ?? theme.colorScheme.onSurface),
               letterSpacing: -0.3,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
+
   Widget _buildMarketStatusBadge(ThemeData theme, LanguageProvider lang) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -785,70 +800,104 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lang = Provider.of<LanguageProvider>(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(lang.translate('home')),
-        actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 14,
-                      minHeight: 14,
-                    ),
-                    child: Text(
-                      '3',
-                      style: TextStyle(
-                        color: theme.colorScheme.onError,
-                        fontSize: 10,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(languageProvider.translate('home')),
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications_outlined),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error,
+                        shape: BoxShape.circle,
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '3',
+                        style: TextStyle(
+                          color: theme.colorScheme.onError,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Scaffold(
+                      appBar: AppBar(
+                        title:
+                            Text(languageProvider.translate('notifications')),
+                      ),
+                      body: _buildNotificationsScreen(theme, languageProvider),
+                    ),
+                  ),
+                );
+              },
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => Scaffold(
-                    appBar: AppBar(
-                      title: Text(lang.translate('notifications')),
-                    ),
-                    body: _buildNotificationsScreen(theme, lang),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshMarketData,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildMarketOverview(theme, lang),
-            const SizedBox(height: 16),
-            _buildMarketChart(theme, lang),
-            const SizedBox(height: 16),
-            _buildTopMovers(theme, lang),
-            const SizedBox(height: 16),
-            _buildSectorPerformance(theme, lang),
           ],
+        ),
+        body: RefreshIndicator(
+          onRefresh: _refreshMarketData,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildMarketOverview(theme, languageProvider),
+              const SizedBox(height: 16),
+              _buildMarketChart(theme, languageProvider),
+              const SizedBox(height: 16),
+              _buildTopMovers(theme, languageProvider),
+              const SizedBox(height: 16),
+              _buildSectorPerformance(theme, languageProvider),
+            ],
+          ),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: 0, // Home is selected
+          type: BottomNavigationBarType.fixed,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home),
+              label: languageProvider.translate('home'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.show_chart),
+              label: languageProvider.translate('market'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.account_balance_wallet),
+              label: languageProvider.translate('portfolio'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person),
+              label: languageProvider.translate('profile'),
+            ),
+          ],
+          onTap: (index) {
+            if (index != 0) {
+              // Navigate to the appropriate screen
+              final routes = ['/home', '/market', '/portfolio', '/profile'];
+              Navigator.pushReplacementNamed(context, routes[index]);
+            }
+          },
         ),
       ),
     );

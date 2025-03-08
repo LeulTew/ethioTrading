@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'config/env.dart';
 
 /// Default Firebase configuration options for the current platform
 class DefaultFirebaseOptions {
@@ -33,7 +34,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    apiKey: Env.firebaseApiKey,
     appId: '1:1037800105398:web:477e073d91c9a8bf794d17',
     messagingSenderId: '1037800105398',
     projectId: 'ethio-tradding-app-9af0d',
@@ -44,7 +45,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    apiKey: Env.firebaseApiKey,
     appId: '1:1037800105398:android:477e073d91c9a8bf794d17',
     messagingSenderId: '1037800105398',
     projectId: 'ethio-tradding-app-9af0d',
@@ -53,7 +54,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    apiKey: Env.firebaseApiKey,
     appId: '1:1037800105398:ios:477e073d91c9a8bf794d17',
     messagingSenderId: '1037800105398',
     projectId: 'ethio-tradding-app-9af0d',
@@ -64,7 +65,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    apiKey: Env.firebaseApiKey,
     appId: '1:1037800105398:macos:477e073d91c9a8bf794d17',
     messagingSenderId: '1037800105398',
     projectId: 'ethio-tradding-app-9af0d',

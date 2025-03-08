@@ -72,3 +72,6 @@ web_debug/
 # Edge browser debug data
 .edge_data/
 debug_data/
+
+# API keys and sensitive information
+lib/config/env.dart

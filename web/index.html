@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <base href="$FLUTTER_BASE_HREF" />
 
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
     <meta name="description" content="An Ethiopian trading application." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- iOS meta tags & icons -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -21,7 +23,7 @@
 
     <script>
       // The value below is injected by flutter build, do not touch.
-      var serviceWorkerVersion = null;
+      var serviceWorkerVersion = "{{flutter_service_worker_version}}";
     </script>
 
     <!-- This script adds the flutter initialization JS code -->
@@ -46,7 +48,14 @@
     </div>
     <script>
       window.addEventListener("load", function (ev) {
-        // Download main.dart.js
+        // The value below is injected by flutter build, do not touch.
+        var serviceWorkerVersion = "{{flutter_service_worker_version}}";
+
+        // Initialize Flutter web properly
+        _flutter = window._flutter || {};
+        window.flutterWebRenderer = "html";
+
+        // Load Flutter properly
         _flutter.loader.loadEntrypoint({
           serviceWorker: {
             serviceWorkerVersion: serviceWorkerVersion,
@@ -54,6 +63,11 @@
           onEntrypointLoaded: function (engineInitializer) {
             engineInitializer.initializeEngine().then(function (appRunner) {
               appRunner.runApp();
+              // Hide loading indicator when app is initialized
+              var loadingIndicator = document.getElementById("loading");
+              if (loadingIndicator) {
+                loadingIndicator.remove();
+              }
             });
           },
         });
@@ -61,13 +75,23 @@
     </script>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import {
+        getAuth,
+        connectAuthEmulator,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import {
+        getFirestore,
+        connectFirestoreEmulator,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+      import {
+        getDatabase,
+        connectDatabaseEmulator,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    <script>
       // Your web app's Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68",
@@ -77,12 +101,23 @@
         messagingSenderId: "1037800105398",
         appId: "1:1037800105398:web:477e073d91c9a8bf794d17",
         measurementId: "G-GLFX8LEDJH",
-        databaseURL: "https://ethio-tradding-app-9af0d.firebaseio.com",
+        databaseURL:
+          "https://ethio-tradding-app-9af0d-default-rtdb.firebaseio.com",
       };
 
       // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
-      firebase.analytics();
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      const auth = getAuth(app);
+      const firestore = getFirestore(app);
+      const database = getDatabase(app);
+
+      // Make Firebase available globally
+      window.firebaseApp = app;
+      window.firebaseAuth = auth;
+      window.firebaseFirestore = firestore;
+      window.firebaseDatabase = database;
+      window.firebaseAnalytics = analytics;
     </script>
   </body>
 </html>

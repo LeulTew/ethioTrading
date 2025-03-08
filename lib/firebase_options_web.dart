@@ -1,6 +1,8 @@
+import 'config/env.dart';
+
 class FirebaseOptionsWeb {
   static final Map<String, String> firebaseConfig = {
-    'apiKey': 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    'apiKey': Env.firebaseApiKey,
     'authDomain': 'ethio-tradding-app-9af0d.firebaseapp.com',
     'projectId': 'ethio-tradding-app-9af0d',
     'storageBucket': 'ethio-tradding-app-9af0d.firebasestorage.app',

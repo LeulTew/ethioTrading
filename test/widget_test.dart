@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +16,6 @@ void main() {
   });
 
   testWidgets('App should render properly', (WidgetTester tester) async {
-    final analytics = FirebaseAnalytics.instance;
     final prefs = await SharedPreferences.getInstance();
 
     await tester.pumpWidget(
@@ -26,7 +24,7 @@ void main() {
           ChangeNotifierProvider(create: (_) => AuthProvider()),
           ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
         ],
-        child: MyApp(analytics: analytics),
+        child: const MyApp(),
       ),
     );
 
