@@ -9,6 +9,8 @@ import '../utils/ethiopian_utils.dart';
 import '../utils/validators.dart';
 import '../providers/language_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/market_provider.dart';
+import '../models/asset.dart';
 
 // Add extension for ColorScheme
 extension ColorSchemeExt on ColorScheme {
@@ -16,11 +18,11 @@ extension ColorSchemeExt on ColorScheme {
 }
 
 class StockDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> stockData;
+  final Asset asset;
 
   const StockDetailScreen({
     super.key,
-    required this.stockData,
+    required this.asset,
   });
 
   @override
@@ -33,7 +35,6 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   bool isBuySelected = true;
-  bool isInWatchlist = false;
   bool isMarketOrder = true;
   String selectedTimeframe = '1D';
   List<Map<String, dynamic>> mockNews = [];
@@ -41,13 +42,15 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   bool showVolume = true;
   bool showGrid = true;
   bool _isLoading = true;
+  late bool _isFavorite;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _quantityController.text = '1';
-    _priceController.text = widget.stockData['price'].toString();
+    _priceController.text = widget.asset.price.toString();
+    _isFavorite = widget.asset.isFavorite;
     _initializeData();
   }
 
@@ -61,7 +64,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
 
   Future<void> _generateCandleData() async {
     final random = math.Random();
-    double open = widget.stockData['price'].toDouble();
+    double open = widget.asset.price;
     double close = open;
     final List<Candle> generatedCandles = [];
 
@@ -78,9 +81,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
 
       // Volume increases with price volatility
       final volatility = (high - low) / open;
-      final volume = widget.stockData['volume'] *
-          (1 + volatility * 2) *
-          random.nextDouble();
+      final volume =
+          widget.asset.volume * (1 + volatility * 2) * random.nextDouble();
 
       generatedCandles.add(
         Candle(
@@ -95,6 +97,31 @@ class _StockDetailScreenState extends State<StockDetailScreen>
     }
 
     setState(() => candles = generatedCandles);
+  }
+
+  // Handle favorite toggling with MarketProvider
+  Future<void> _toggleFavorite() async {
+    final marketProvider = Provider.of<MarketProvider>(context, listen: false);
+    await marketProvider.toggleFavorite(widget.asset);
+    setState(() {
+      _isFavorite = widget.asset.isFavorite;
+    });
+
+    // Show confirmation message
+    if (mounted) {
+      final lang = Provider.of<LanguageProvider>(context, listen: false);
+      final message = _isFavorite
+          ? lang.translate('saved_to_favorites')
+          : lang.translate('removed_from_favorites');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _buildAdvancedChart() {
@@ -406,10 +433,9 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           validator: (value) => TradeValidator.validateQuantity(
             value ?? '',
-            lotSize: widget.stockData['lotSize'] ?? 1,
-            availableBalance: widget.stockData['availableBalance'] ?? 0,
-            price: double.tryParse(_priceController.text) ??
-                widget.stockData['price'],
+            lotSize: widget.asset.lotSize,
+            availableBalance: widget.asset.availableBalance,
+            price: double.tryParse(_priceController.text) ?? widget.asset.price,
           ),
         ),
         if (!isMarketOrder) ...[
@@ -421,8 +447,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: (value) => TradeValidator.validatePrice(
               value ?? '',
-              basePrice: widget.stockData['price'],
-              tickSize: widget.stockData['tickSize'] ?? 0.01,
+              basePrice: widget.asset.price,
+              tickSize: widget.asset.tickSize,
             ),
           ),
         ],
@@ -477,7 +503,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   Widget _buildOrderSummaryCard(ThemeData theme, LanguageProvider lang) {
     final quantity = int.tryParse(_quantityController.text) ?? 0;
     final price = double.tryParse(_priceController.text) ??
-        (widget.stockData['price'] as num).toDouble();
+        (widget.asset.price as num).toDouble();
     final total = (quantity * price).toDouble();
 
     // Use correct validator class and method
@@ -607,9 +633,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
 
     // Validate form fields
     final quantity = _quantityController.text;
-    final price = isMarketOrder
-        ? widget.stockData['price'].toString()
-        : _priceController.text;
+    final price =
+        isMarketOrder ? widget.asset.price.toString() : _priceController.text;
     final tradeType = isMarketOrder ? 'market' : 'limit';
     final orderSide = isBuySelected ? 'buy' : 'sell';
 
@@ -619,7 +644,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
       price: price,
       tradeType: tradeType,
       orderSide: orderSide,
-      stockData: widget.stockData,
+      stockData: widget.asset.toMap(), // Convert Asset to Map<String, dynamic>
       userProfile: authProvider.userData ?? {},
     );
 
@@ -660,7 +685,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${lang.translate(orderSide)}: $quantity ${widget.stockData['symbol']}',
+              '${lang.translate(orderSide)}: $quantity ${widget.asset.symbol}',
               style: GoogleFonts.spaceGrotesk(),
             ),
             const SizedBox(height: 8),
@@ -710,7 +735,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
 
       // Execute trade
       await authProvider.executeTrade({
-        'symbol': widget.stockData['symbol'],
+        'symbol': widget.asset.symbol,
         'type': tradeType,
         'side': orderSide,
         'quantity': int.parse(quantity),
@@ -766,14 +791,14 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lang = Provider.of<LanguageProvider>(context);
-    final isPositiveChange = (widget.stockData['change'] ?? 0) >= 0;
+    final isPositiveChange = widget.asset.change >= 0;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             Text(
-              widget.stockData['symbol'],
+              widget.asset.symbol,
               style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
@@ -784,7 +809,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                lang.translate(widget.stockData['sector'].toLowerCase()),
+                lang.translate(widget.asset.sector.toLowerCase()),
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: theme.colorScheme.primary,
@@ -796,10 +821,19 @@ class _StockDetailScreenState extends State<StockDetailScreen>
         actions: [
           IconButton(
             icon: Icon(
-              isInWatchlist ? Icons.star : Icons.star_border,
-              color: isInWatchlist ? Colors.amber : null,
+              _isFavorite ? Icons.star : Icons.star_border,
+              color: _isFavorite ? Colors.amber : null,
             ),
-            onPressed: () => setState(() => isInWatchlist = !isInWatchlist),
+            onPressed: _toggleFavorite,
+            tooltip: lang.translate(
+                _isFavorite ? 'remove_from_favorites' : 'add_to_watchlist'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              // Share functionality
+            },
+            tooltip: lang.translate('share'),
           ),
         ],
         bottom: TabBar(
@@ -891,7 +925,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              EthiopianCurrencyFormatter.format(widget.stockData['price']),
+              widget.asset.formattedPrice,
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -904,7 +938,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
                   size: 16,
                 ),
                 Text(
-                  '${isPositiveChange ? '+' : ''}${widget.stockData['change'].toStringAsFixed(2)}%',
+                  widget.asset.formattedChangePercent,
                   style: TextStyle(
                     color: isPositiveChange ? Colors.green : Colors.red,
                     fontWeight: FontWeight.bold,
@@ -930,10 +964,9 @@ class _StockDetailScreenState extends State<StockDetailScreen>
               style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            _buildInfoRow('name', widget.stockData['name'], theme, lang),
-            _buildInfoRow('sector', widget.stockData['sector'], theme, lang),
-            _buildInfoRow(
-                'ownership', widget.stockData['ownership'], theme, lang),
+            _buildInfoRow('name', widget.asset.name, theme, lang),
+            _buildInfoRow('sector', widget.asset.sector, theme, lang),
+            _buildInfoRow('ownership', widget.asset.ownership, theme, lang),
           ],
         ),
       ),
@@ -976,18 +1009,16 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             const SizedBox(height: 16),
             _buildStatRow(
                 'volume',
-                EthiopianCurrencyFormatter.formatVolume(
-                    widget.stockData['volume']),
+                EthiopianCurrencyFormatter.formatVolume(widget.asset.volume),
                 theme,
                 lang),
             _buildStatRow(
                 'market_cap',
-                EthiopianCurrencyFormatter.format(
-                    widget.stockData['marketCap']),
+                EthiopianCurrencyFormatter.format(widget.asset.marketCap),
                 theme,
                 lang),
-            _buildStatRow('lot_size', widget.stockData['lotSize'].toString(),
-                theme, lang),
+            _buildStatRow(
+                'lot_size', widget.asset.lotSize.toString(), theme, lang),
           ],
         ),
       ),
@@ -1037,7 +1068,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   }
 
   Widget _buildTechnicalIndicators(ThemeData theme, LanguageProvider lang) {
-    final indicators = widget.stockData['technicalIndicators'];
+    final indicators = widget.asset.technicalIndicators;
     if (indicators == null) return const SizedBox.shrink();
 
     return Card(

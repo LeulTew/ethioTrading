@@ -217,6 +217,31 @@ const Map<String, String> englishTranslations = {
   'invalid_credentials': 'Invalid email or password',
   'network_error': 'Network connection error',
   'server_error': 'Server error occurred',
+
+  // Trading related terms
+  'trade_asset': 'Trade Asset',
+  'current_price': 'Current Price',
+  'trade_type': 'Trade Type',
+  'buy': 'Buy',
+  'sell': 'Sell',
+  'shares': 'Shares',
+  'confirm': 'Confirm',
+  'buy_success': 'Purchase Successful',
+  'sell_success': 'Sale Successful',
+
+  // Notification related terms
+  'no_notifications': 'No Notifications',
+  'clear_all': 'Clear All',
+  'mark_all_read': 'Mark All as Read',
+  'order_executed': 'Order Executed',
+  'market_alert': 'Market Alert',
+  'price_alert': 'Price Alert',
+  'system_notification': 'System Notification',
+  'view_order_details': 'View Order Details',
+
+  // User action confirmations
+  'saved_to_favorites': 'Saved to Favorites',
+  'removed_from_favorites': 'Removed from Favorites',
 };
 
 const Map<String, String> amharicTranslations = {
@@ -547,4 +572,27 @@ const Map<String, String> amharicTranslations = {
   // Buy/Sell specific
   'buy_action': 'ግዛ',
   'sell_action': 'ሽጥ',
+
+  // Trading related terms
+  'trade_asset': 'ንብረት መለዋወጥ',
+  'current_price': 'የአሁኑ ዋጋ',
+  'trade_type': 'የንግድ አይነት',
+  'buy': 'ግዛ',
+  'sell': 'ሽጥ',
+  'buy_success': 'ግዢው ተሳክቷል',
+  'sell_success': 'ሽያጩ ተሳክቷል',
+
+  // Notification related terms
+  'no_notifications': 'ማሳወቂያዎች የሉም',
+  'clear_all': 'ሁሉንም አጽዳ',
+  'mark_all_read': 'ሁሉንም እንደተነበበ ምልክት አድርግ',
+  'order_executed': 'ትዕዛዝ ተፈጽሟል',
+  'market_alert': 'የገበያ ማሳወቂያ',
+  'price_alert': 'የዋጋ ማሳወቂያ',
+  'system_notification': 'የሲስተም ማሳወቂያ',
+  'view_order_details': 'የትዕዛዝ ዝርዝሮችን ይመልከቱ',
+
+  // User action confirmations
+  'saved_to_favorites': 'ወደ ተወዳጆች ተመዝግቧል',
+  'removed_from_favorites': 'ከተወዳጆች ተወግዷል',
 };

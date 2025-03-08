@@ -12,18 +12,18 @@
     <!-- iOS meta tags & icons -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <meta name="apple-mobile-web-app-title" content="ethio_trading_app" />
+    <meta name="apple-mobile-web-app-title" content="ethio_trading" />
     <link rel="apple-touch-icon" href="icons/Icon-192.png" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="favicon.png" />
 
-    <title>Ethiopian Trading App</title>
+    <title>Ethio Trading</title>
     <link rel="manifest" href="manifest.json" />
 
     <script>
       // The value below is injected by flutter build, do not touch.
-      var serviceWorkerVersion = "{{flutter_service_worker_version}}";
+      var serviceWorkerVersion = null;
     </script>
 
     <!-- This script adds the flutter initialization JS code -->
@@ -34,6 +34,7 @@
       <style>
         body {
           background-color: #ffffff;
+          margin: 0;
         }
         #loading {
           position: fixed;
@@ -42,34 +43,82 @@
           display: flex;
           justify-content: center;
           align-items: center;
+          font-family: Arial, sans-serif;
+          font-size: 16px;
+        }
+        .loading-indicator {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #3498db;
+          border-radius: 50%;
+          margin-bottom: 10px;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       </style>
-      Loading...
+      <div class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+      </div>
     </div>
+
     <script>
-      window.addEventListener("load", function (ev) {
-        // The value below is injected by flutter build, do not touch.
-        var serviceWorkerVersion = "{{flutter_service_worker_version}}";
+      // Force HTML renderer for all browsers to avoid compatibility issues
+      window.flutterWebRenderer = "html";
 
-        // Initialize Flutter web properly
-        _flutter = window._flutter || {};
-        window.flutterWebRenderer = "html";
+      // The value below is injected by flutter build, do not touch.
+      var serviceWorkerVersion = null;
 
-        // Load Flutter properly
-        _flutter.loader.loadEntrypoint({
-          serviceWorker: {
-            serviceWorkerVersion: serviceWorkerVersion,
-          },
-          onEntrypointLoaded: function (engineInitializer) {
-            engineInitializer.initializeEngine().then(function (appRunner) {
-              appRunner.runApp();
-              // Hide loading indicator when app is initialized
-              var loadingIndicator = document.getElementById("loading");
-              if (loadingIndicator) {
-                loadingIndicator.remove();
-              }
-            });
-          },
+      // Proper initialization method recommended by Flutter
+      window.addEventListener("load", async function () {
+        var loading = document.getElementById("loading");
+
+        // Initialize Flutter's engine using proper method
+        _flutter = {};
+        _flutter.loader = _flutter.loader || {};
+        _flutter.loader.loadEntrypoint = function (options) {
+          return Promise.resolve().then(function () {
+            return loadMainDartJs();
+          });
+        };
+
+        function loadMainDartJs() {
+          return new Promise(function (resolve, reject) {
+            var scriptTag = document.createElement("script");
+            scriptTag.src = "main.dart.js";
+            scriptTag.type = "application/javascript";
+            scriptTag.onload = resolve;
+            scriptTag.onerror = function (error) {
+              console.error("Failed to load main.dart.js", error);
+              reject(error);
+            };
+            document.body.appendChild(scriptTag);
+          });
+        }
+
+        try {
+          await _flutter.loader.loadEntrypoint({});
+        } catch (e) {
+          console.error("Failed to load Flutter app", e);
+          loading.innerHTML = "Error loading application: " + e;
+        }
+
+        // Listen for first render
+        window.addEventListener("flutter-first-frame", function () {
+          loading.remove();
         });
       });
     </script>

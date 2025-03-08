@@ -9,6 +9,7 @@ import '../data/ethio_data.dart';
 import '../utils/ethiopian_utils.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
+import '../models/asset.dart';
 import 'stock_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -439,7 +440,19 @@ class _HomeScreenState extends State<HomeScreen>
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => StockDetailScreen(stockData: stock),
+          builder: (context) => StockDetailScreen(
+            asset: Asset(
+              name: stock['name'],
+              symbol: stock['symbol'],
+              sector: stock['sector'],
+              ownership: stock['ownership'],
+              price: stock['price'].toDouble(),
+              change: stock['change'].toDouble(),
+              changePercent: stock['changePercent'].toDouble(),
+              volume: stock['volume'].toDouble(),
+              marketCap: stock['marketCap'].toDouble(),
+            ),
+          ),
         ),
       ),
       child: Container(

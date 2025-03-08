@@ -1,0 +1,9 @@
+@echo off
+echo Cleaning Flutter project...
+flutter clean
+echo Getting dependencies...
+flutter pub get
+echo Running Flutter web on Chrome...
+set FLUTTER_WEB_RENDERER=html
+flutter run -d chrome
+pause 

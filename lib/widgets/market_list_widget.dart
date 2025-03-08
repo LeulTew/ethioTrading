@@ -6,6 +6,8 @@ class MarketListWidget extends StatelessWidget {
   final Function(Asset) onAssetTap;
   final bool showFullList;
   final int maxItems;
+  final Set<String> favoriteAssets;
+  final Function(String) onFavoriteToggle;
 
   const MarketListWidget({
     super.key,
@@ -13,6 +15,8 @@ class MarketListWidget extends StatelessWidget {
     required this.onAssetTap,
     this.showFullList = false,
     this.maxItems = 5,
+    this.favoriteAssets = const {},
+    required this.onFavoriteToggle,
   });
 
   @override
@@ -31,6 +35,7 @@ class MarketListWidget extends StatelessWidget {
 
   Widget _buildAssetCard(BuildContext context, Asset asset) {
     final theme = Theme.of(context);
+    final isFavorite = favoriteAssets.contains(asset.symbol);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -40,6 +45,18 @@ class MarketListWidget extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
+              // Favorite star icon
+              IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.star : Icons.star_border,
+                  color: isFavorite ? Colors.amber : Colors.grey,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => onFavoriteToggle(asset.symbol),
+              ),
+              const SizedBox(width: 8),
+
               // Symbol and name
               Expanded(
                 flex: 3,
@@ -109,6 +126,13 @@ class MarketListWidget extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+
+              // Trade button
+              IconButton(
+                icon: const Icon(Icons.trending_up, color: Colors.blue),
+                onPressed: () => onAssetTap(asset),
+                tooltip: 'Trade',
               ),
             ],
           ),

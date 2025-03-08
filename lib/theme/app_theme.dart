@@ -6,55 +6,56 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Light Theme Colors
-  static const Color _lightPrimary = Color(0xFF2563EB); // Modern blue
-  static const Color _lightSecondary = Color(0xFF0EA5E9); // Sky blue
-  static const Color _lightBackground = Color(0xFFF8FAFC); // Refined off-white
+  // Light Theme Colors - Enhanced
+  static const Color _lightPrimary = Color(0xFF2E3192); // Rich royal blue
+  static const Color _lightSecondary = Color(0xFF00B0FF); // Electric blue
+  static const Color _lightBackground = Color(0xFFF9FAFC); // Premium off-white
   static const Color _lightSurface = Colors.white;
-  static const Color _lightError = Color(0xFFDC2626); // Modern red
+  static const Color _lightError = Color(0xFFE53935); // Vibrant red
 
-  // Gradient Colors
+  // Gradient Colors - More sophisticated
   static const List<Color> primaryGradient = [
-    Color(0xFF2563EB), // Modern blue
-    Color(0xFF3B82F6), // Bright blue
-    Color(0xFF60A5FA), // Light blue
+    Color(0xFF3A1C71), // Deep indigo
+    Color(0xFF4736B3), // Rich royal blue
+    Color(0xFF5E60CE), // Periwinkle
   ];
 
   static const List<Color> accentGradient = [
-    Color(0xFF0EA5E9), // Sky blue
-    Color(0xFF38BDF8), // Light sky blue
-    Color(0xFF7DD3FC), // Extra light sky blue
+    Color(0xFF00B4DB), // Bright cyan
+    Color(0xFF0083B0), // Azure
+    Color(0xFF00608B), // Deep azure
   ];
 
-  // Additional gradients
+  // Additional gradients for premium look
   static const List<Color> successGradient = [
-    Color(0xFF059669), // Modern emerald
-    Color(0xFF34D399), // Light emerald
+    Color(0xFF11998E), // Teal
+    Color(0xFF38EF7D), // Spring green
   ];
 
   static const List<Color> warningGradient = [
-    Color(0xFFF59E0B), // Modern amber
-    Color(0xFFFBBF24), // Light amber
+    Color(0xFFFF8008), // Amber
+    Color(0xFFFFC837), // Golden
   ];
 
+  // Adding the missing errorGradient
   static const List<Color> errorGradient = [
-    Color(0xFFDC2626), // Modern red
-    Color(0xFFEF4444), // Light red
+    Color(0xFFED213A), // Crimson
+    Color(0xFF93291E), // Dark red
   ];
 
-  // Dark Theme Colors
+  // Dark Theme Colors - More sophisticated
   static const Color _darkPrimary = Color(0xFF6A5ACD); // Slate blue
   static const Color _darkSecondary = Color(0xFF56CCF2); // Sky blue
   static const Color _darkBackground = Color(0xFF121212); // Deep black
   static const Color _darkSurface = Color(0xFF1D1F2B); // Rich dark blue-gray
   static const Color _darkError = Color(0xFFFF5252); // Bright red
 
-  // Trading Colors
+  // Trading Colors - More vibrant
   static const Color bullish = Color(0xFF00E676); // Bright mint green
   static const Color bearish = Color(0xFFFF3D00); // Vibrant orange-red
   static const Color neutral = Color(0xFF9E9E9E); // Medium gray
 
-  // Chart Colors
+  // Chart Colors - More distinctive
   static const List<Color> chartColors = [
     Color(0xFF5E60CE), // Periwinkle
     Color(0xFFFF7C43), // Coral
@@ -65,7 +66,7 @@ class AppTheme {
     Color(0xFFFFD166), // Mustard
   ];
 
-  // Technical Indicator Colors
+  // Technical Indicator Colors - Enhanced
   static const Color macdLine = Color(0xFF5E60CE); // Periwinkle
   static const Color signalLine = Color(0xFFFF7C43); // Coral
   static const Color histogram = Color(0xFF00B4D8); // Ocean blue
@@ -73,128 +74,148 @@ class AppTheme {
   static const Color bollingerBands = Color(0xFFAA6AE0); // Lavender
   static const Color movingAverage = Color(0xFFFF5252); // Bright red
 
-  // Light Theme
-  static final ThemeData lightTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
-    colorScheme: const ColorScheme.light(
-      primary: _lightPrimary,
-      secondary: _lightSecondary,
-      surface: _lightSurface,
-      error: _lightError,
-    ),
-    scaffoldBackgroundColor: _lightBackground,
-    cardTheme: CardTheme(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: _lightSurface,
-    ),
-    appBarTheme: AppBarTheme(
-      elevation: 0,
-      centerTitle: true,
-      backgroundColor: Colors.transparent,
-      foregroundColor: _lightPrimary,
-      titleTextStyle: GoogleFonts.spaceGrotesk(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: _lightPrimary,
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: _lightPrimary,
+        secondary: _lightSecondary,
+        surface: _lightSurface,
+        error: _lightError,
       ),
-    ),
-    tabBarTheme: const TabBarTheme(
-      labelColor: _lightPrimary,
-      unselectedLabelColor: Colors.grey,
-      indicatorSize: TabBarIndicatorSize.label,
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+      scaffoldBackgroundColor: _lightBackground,
+      cardTheme: CardTheme(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: _lightSurface,
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _lightPrimary, width: 2),
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        elevation: 2,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        foregroundColor: _lightPrimary,
+        titleTextStyle: GoogleFonts.spaceGrotesk(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: _lightPrimary,
         ),
       ),
-    ),
-    chipTheme: ChipThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      tabBarTheme: const TabBarTheme(
+        labelColor: _lightPrimary,
+        unselectedLabelColor: Colors.grey,
+        indicatorSize: TabBarIndicatorSize.label,
       ),
-      side: BorderSide.none,
-    ),
-    dividerTheme: const DividerThemeData(
-      space: 24,
-      thickness: 1,
-    ),
-  );
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _lightPrimary, width: 2),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        side: BorderSide.none,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 24,
+        thickness: 1,
+      ),
+    );
+  }
 
-  // Dark Theme
-  static final ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    colorScheme: const ColorScheme.dark(
-      primary: _darkPrimary,
-      secondary: _darkSecondary,
-      surface: _darkSurface,
-      error: _darkError,
-    ),
-    scaffoldBackgroundColor: _darkBackground,
-    cardTheme: const CardTheme(
-      elevation: 4,
-      margin: EdgeInsets.zero,
-      color: _darkSurface,
-    ),
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      centerTitle: true,
-      backgroundColor: _darkBackground,
-      foregroundColor: _darkPrimary,
-    ),
-    tabBarTheme: const TabBarTheme(
-      labelColor: _darkPrimary,
-      unselectedLabelColor: Colors.grey,
-      indicatorSize: TabBarIndicatorSize.label,
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: _darkPrimary,
+        secondary: _darkSecondary,
+        surface: _darkSurface,
+        error: _darkError,
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _darkPrimary, width: 2),
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
+      scaffoldBackgroundColor: _darkBackground,
+      cardTheme: const CardTheme(
         elevation: 4,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
+        margin: EdgeInsets.zero,
+        color: _darkSurface,
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: _darkBackground,
+        foregroundColor: _darkPrimary,
+      ),
+      tabBarTheme: const TabBarTheme(
+        labelColor: _darkPrimary,
+        unselectedLabelColor: Colors.grey,
+        indicatorSize: TabBarIndicatorSize.label,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _darkPrimary, width: 2),
+        ),
       ),
-    ),
-    chipTheme: ChipThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 4,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
       ),
-      side: BorderSide.none,
-    ),
-    dividerTheme: const DividerThemeData(
-      space: 24,
-      thickness: 1,
-    ),
-  );
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        side: BorderSide.none,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 24,
+        thickness: 1,
+      ),
+    );
+  }
 
   // Chart Theme
-  static ChartThemeData getChartTheme(bool isDarkMode) {
+  static ChartThemeData chartTheme(bool isDarkMode) {
     return ChartThemeData(
       backgroundColor: isDarkMode ? _darkBackground : _lightBackground,
       gridLineColor: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,

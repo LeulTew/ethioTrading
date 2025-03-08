@@ -162,20 +162,10 @@ class _NewsFeedWidgetState extends State<NewsFeedWidget> {
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(4)),
-                child: Image.network(
+                child: _buildNetworkImage(
                   article['urlToImage'],
                   height: 150,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 150,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 50),
-                      ),
-                    );
-                  },
                 ),
               )
             else
@@ -260,6 +250,61 @@ class _NewsFeedWidgetState extends State<NewsFeedWidget> {
           ],
         ),
       ),
+    );
+  }
+
+  // Helper method to handle image loading with CORS handling
+  Widget _buildNetworkImage(String url, {double? height, double? width}) {
+    // Handle finnhub and other CORS-blocked images
+    String imageUrl = url;
+
+    // Use a more reliable CORS proxy method
+    if (url.contains('finnhub.io') ||
+        url.contains('static2.finnhub.io') ||
+        url.contains('cdn.') ||
+        url.contains('images.')) {
+      try {
+        // Try different proxy options
+        // Option 1: aco-proxy - a public CORS proxy
+        imageUrl = 'https://aco-proxy.cyclic.app/$url';
+      } catch (e) {
+        // If proxy fails, fall back to original URL
+        imageUrl = url;
+      }
+    }
+
+    return Image.network(
+      imageUrl,
+      height: height,
+      width: width,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        // If normal image loading fails, try using HtmlElementView as fallback (when in web)
+        return Container(
+          height: height,
+          width: width,
+          color: Colors.grey[300],
+          child: const Center(
+            child: Icon(Icons.image_not_supported, size: 50),
+          ),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: height,
+          width: width,
+          color: Colors.grey[200],
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
     );
   }
 

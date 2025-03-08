@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
@@ -19,24 +20,29 @@ import 'providers/language_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/portfolio_provider.dart';
 import 'providers/news_provider.dart';
+import 'providers/notification_provider.dart';
+import 'providers/trade_provider.dart';
 import 'services/api_service.dart';
-
-// Conditional import for web
-import 'utils/web_utils.dart' if (dart.library.io) 'utils/io_utils.dart';
+// Import platform-specific utilities with prefixes to avoid conflicts
+import 'utils/web_utils.dart';
+import 'utils/io_utils.dart' as io_utils;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Google Fonts
-  GoogleFonts.config.allowRuntimeFetching = true;
+  // Initialize platform-specific functionality
+  if (WebUtils.shouldInitializeApp()) {
+    WebUtils.initPlatformSpecific();
+    // Configure Google Fonts for web
+    GoogleFonts.config.allowRuntimeFetching = true;
+  } else {
+    io_utils.initPlatformIO();
+  }
 
-  // Initialize Firebase
+  // Initialize Firebase with cross-browser support
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // Initialize web-specific functionality
-  initPlatformSpecific();
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -65,6 +71,18 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => NewsProvider(apiService: apiService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NotificationProvider(
+            database: firebaseDatabase,
+          ),
+        ),
+        ChangeNotifierProxyProvider<NotificationProvider, TradeProvider>(
+          create: (_) => TradeProvider(),
+          update: (_, notificationProvider, previousTradeProvider) =>
+              TradeProvider(
+            notificationProvider: notificationProvider,
+          ),
         ),
       ],
       child: const MyApp(),

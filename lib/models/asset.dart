@@ -19,6 +19,10 @@ class Asset {
   final int lotSize;
   final double tickSize;
   String? description;
+  bool isFavorite; // Added property for favorites/starred assets
+  double availableBalance; // Added property for trading functionality
+  Map<String, dynamic>?
+      technicalIndicators; // Added property for technical analysis
 
   Asset({
     required this.name,
@@ -38,6 +42,9 @@ class Asset {
     this.description,
     this.lotSize = 1, // Minimum trading unit
     this.tickSize = 0.05, // Minimum price movement
+    this.isFavorite = false, // Default to not favorite
+    this.availableBalance = 0.0, // Default to no available balance
+    this.technicalIndicators, // Technical indicators
   });
 
   // Calculate price movement restrictions based on Ethiopian market rules
@@ -61,6 +68,11 @@ class Asset {
   double? get percentageChange =>
       openPrice != null ? (price - openPrice!) / openPrice! * 100 : null;
 
+  // Toggle favorite status
+  void toggleFavorite() {
+    isFavorite = !isFavorite;
+  }
+
   // Create a new Asset instance with updated price
   Asset copyWithPrice(double newPrice) {
     return Asset(
@@ -81,6 +93,9 @@ class Asset {
       description: description,
       lotSize: lotSize,
       tickSize: tickSize,
+      isFavorite: isFavorite, // Preserve favorite status
+      availableBalance: availableBalance, // Preserve available balance
+      technicalIndicators: technicalIndicators, // Preserve technical indicators
     );
   }
 
@@ -90,13 +105,13 @@ class Asset {
       name: map['name'] ?? '',
       symbol: map['symbol'] ?? '',
       sector: map['sector'] ?? '',
-      ownership: '',
+      ownership: map['ownership'] ?? '',
       price: (map['price'] ?? 0.0).toDouble(),
       change: (map['change'] ?? 0.0).toDouble(),
       changePercent: (map['changePercent'] ?? 0.0).toDouble(),
       volume: (map['volume'] ?? 0.0).toDouble(),
       marketCap: (map['marketCap'] ?? 0.0).toDouble(),
-      currency: 'ETB',
+      currency: map['currency'] ?? 'ETB',
       lastUpdated: map['lastUpdated'] != null
           ? DateTime.parse(map['lastUpdated'])
           : DateTime.now(),
@@ -104,8 +119,13 @@ class Asset {
       dayLow: map['dayLow']?.toDouble(),
       openPrice: map['openPrice']?.toDouble(),
       description: map['description'],
-      lotSize: 1, // Minimum trading unit
-      tickSize: 0.05, // Minimum price movement
+      lotSize: map['lotSize'] ?? 1,
+      tickSize: map['tickSize'] ?? 0.05,
+      isFavorite: map['isFavorite'] ?? false, // Load favorite status
+      availableBalance:
+          (map['availableBalance'] ?? 0.0).toDouble(), // Load available balance
+      technicalIndicators: map['technicalIndicators']
+          as Map<String, dynamic>?, // Load technical indicators
     );
   }
 
@@ -129,6 +149,10 @@ class Asset {
       'lotSize': lotSize,
       'tickSize': tickSize,
       'description': description,
+      'isFavorite': isFavorite, // Include favorite status in map
+      'availableBalance': availableBalance, // Include available balance in map
+      'technicalIndicators':
+          technicalIndicators, // Include technical indicators in map
     };
   }
 
