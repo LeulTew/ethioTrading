@@ -123,23 +123,29 @@ class _ProfileScreenState extends State<ProfileScreen>
           borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Padding(
-              padding: padding ?? const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (title.isNotEmpty) ...[
-                    Text(
-                      title,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(38), // 0.15 * 255
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: padding ?? const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (title.isNotEmpty) ...[
+                      Text(
+                        title,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
+                    ...children,
                   ],
-                  ...children,
-                ],
+                ),
               ),
             ),
           ),

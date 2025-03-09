@@ -151,256 +151,275 @@ class _LoginScreenState extends State<LoginScreen>
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Enhanced animated gradient background with Ethiopian colors
-          AnimatedBuilder(
-            animation: _backgroundAnimation,
-            builder: (context, child) {
-              return Stack(
-                children: [
-                  // Base gradient
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.lerp(_gradientColors[0], _gradientColors[1],
-                                  _backgroundAnimation.value) ??
-                              _gradientColors[0],
-                          Color.lerp(_gradientColors[2], _gradientColors[3],
-                                  _backgroundAnimation.value) ??
-                              _gradientColors[2],
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Ethiopian flag-inspired subtle overlay
-                  Opacity(
-                    opacity: 0.03,
-                    child: CustomPaint(
-                      painter: EthiopianFlagPatternPainter(),
-                      size: size,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          // Enhanced floating particles with more variety
-          ...[
-            _buildFloatingParticle(size.width * 0.2, size.height * 0.3, 6),
-            _buildFloatingParticle(size.width * 0.8, size.height * 0.2, 8),
-            _buildFloatingParticle(size.width * 0.5, size.height * 0.6, 5),
-            _buildFloatingParticle(size.width * 0.15, size.height * 0.7, 7),
-            _buildFloatingParticle(size.width * 0.85, size.height * 0.8, 6),
-            _buildFloatingParticle(size.width * 0.4, size.height * 0.4, 4),
-            _buildFloatingParticle(size.width * 0.7, size.height * 0.5, 5),
-          ],
-
-          // Main content with enhanced glass effect
-          SingleChildScrollView(
-            child: SizedBox(
-              height: size.height,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
+      body: SingleChildScrollView(
+        child: SizedBox(
+          height: size.height,
+          child: Stack(
+            children: [
+              // Enhanced animated gradient background with Ethiopian colors
+              AnimatedBuilder(
+                animation: _backgroundAnimation,
+                builder: (context, child) {
+                  return Stack(
                     children: [
-                      const SizedBox(height: 40),
-
-                      // Logo and Welcome Text
-                      FadeInDown(
-                        duration: const Duration(milliseconds: 1000),
-                        child: Column(
-                          children: [
-                            // Modern app logo
-                            _buildAppLogo(),
-                            const SizedBox(height: 24),
-                            Text(
-                              lang.translate('welcome_back'),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
-                            )
-                                .animate()
-                                .fadeIn(
-                                  duration: const Duration(milliseconds: 800),
-                                )
-                                .slideY(
-                                  begin: 0.3,
-                                  curve: Curves.easeOutQuart,
-                                ),
-                            const SizedBox(height: 8),
-                            Text(
-                              lang.translate('login_subtitle'),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 16,
-                                color: Colors.white.withValues(alpha: 0.7),
-                                letterSpacing: -0.2,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                      // Base gradient
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color.lerp(_gradientColors[0], _gradientColors[1],
+                                      _backgroundAnimation.value) ??
+                                  _gradientColors[0],
+                              Color.lerp(_gradientColors[2], _gradientColors[3],
+                                      _backgroundAnimation.value) ??
+                                  _gradientColors[2],
+                            ],
+                          ),
                         ),
                       ),
+                      // Ethiopian flag-inspired subtle overlay
+                      Opacity(
+                        opacity: 0.03,
+                        child: CustomPaint(
+                          painter: EthiopianFlagPatternPainter(),
+                          size: size,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
 
-                      const SizedBox(height: 40),
+              // Enhanced floating particles with more variety
+              ...[
+                _buildFloatingParticle(size.width * 0.2, size.height * 0.3, 6),
+                _buildFloatingParticle(size.width * 0.8, size.height * 0.2, 8),
+                _buildFloatingParticle(size.width * 0.5, size.height * 0.6, 5),
+                _buildFloatingParticle(size.width * 0.15, size.height * 0.7, 7),
+                _buildFloatingParticle(size.width * 0.85, size.height * 0.8, 6),
+                _buildFloatingParticle(size.width * 0.4, size.height * 0.4, 4),
+                _buildFloatingParticle(size.width * 0.7, size.height * 0.5, 5),
+              ],
 
-                      // Login Form
-                      Expanded(
-                        child: FadeInUp(
-                          duration: const Duration(milliseconds: 1000),
-                          delay: const Duration(milliseconds: 300),
-                          child: _buildGlassContainer(
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildTextField(
-                                    controller: _emailController,
-                                    hintText: lang.translate('email'),
-                                    icon: Icons.email_rounded,
-                                    keyboardType: TextInputType.emailAddress,
-                                    validator: EmailValidator.validate,
+              // Main content with enhanced glass effect
+              SingleChildScrollView(
+                child: SizedBox(
+                  height: size.height,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 40),
+
+                          // Logo and Welcome Text
+                          FadeInDown(
+                            duration: const Duration(milliseconds: 1000),
+                            child: Column(
+                              children: [
+                                // Modern app logo
+                                _buildAppLogo(),
+                                const SizedBox(height: 24),
+                                Text(
+                                  lang.translate('welcome_back'),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: -0.5,
                                   ),
-                                  const SizedBox(height: 20),
-                                  _buildTextField(
-                                    controller: _passwordController,
-                                    hintText: lang.translate('password'),
-                                    icon: Icons.lock_rounded,
-                                    obscureText: !_isPasswordVisible,
-                                    validator: PasswordValidator.validate,
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _isPasswordVisible
-                                            ? Icons.visibility_rounded
-                                            : Icons.visibility_off_rounded,
-                                        color: Colors.white
-                                            .withAlpha(179), // 0.7 * 255
-                                      ),
-                                      onPressed: () => setState(() =>
-                                          _isPasswordVisible =
-                                              !_isPasswordVisible),
+                                )
+                                    .animate()
+                                    .fadeIn(
+                                      duration:
+                                          const Duration(milliseconds: 800),
+                                    )
+                                    .slideY(
+                                      begin: 0.3,
+                                      curve: Curves.easeOutQuart,
                                     ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  lang.translate('login_subtitle'),
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 16,
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    letterSpacing: -0.2,
                                   ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 40),
+
+                          // Login Form
+                          Expanded(
+                            child: FadeInUp(
+                              duration: const Duration(milliseconds: 1000),
+                              delay: const Duration(milliseconds: 300),
+                              child: _buildGlassContainer(
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            height: 24,
-                                            width: 24,
-                                            child: Transform.scale(
-                                              scale: 0.8,
-                                              child: Checkbox(
-                                                value: _rememberMe,
-                                                onChanged: (value) => setState(
-                                                    () => _rememberMe =
-                                                        value ?? false),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                side: BorderSide(
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.5),
-                                                ),
-                                                checkColor: Colors.black,
-                                                fillColor: WidgetStateProperty
-                                                    .resolveWith((states) {
-                                                  if (states.contains(
-                                                      WidgetState.selected)) {
-                                                    return Colors.white;
-                                                  }
-                                                  return Colors.transparent;
-                                                }),
-                                              ),
-                                            ),
+                                      _buildTextField(
+                                        controller: _emailController,
+                                        hintText: lang.translate('email'),
+                                        icon: Icons.email_rounded,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        validator: EmailValidator.validate,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      _buildTextField(
+                                        controller: _passwordController,
+                                        hintText: lang.translate('password'),
+                                        icon: Icons.lock_rounded,
+                                        obscureText: !_isPasswordVisible,
+                                        validator: PasswordValidator.validate,
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _isPasswordVisible
+                                                ? Icons.visibility_rounded
+                                                : Icons.visibility_off_rounded,
+                                            color: Colors.white
+                                                .withAlpha(179), // 0.7 * 255
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            lang.translate('remember_me'),
-                                            style: GoogleFonts.spaceGrotesk(
-                                              color: Colors.white
+                                          onPressed: () => setState(() =>
+                                              _isPasswordVisible =
+                                                  !_isPasswordVisible),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              SizedBox(
+                                                height: 24,
+                                                width: 24,
+                                                child: Transform.scale(
+                                                  scale: 0.8,
+                                                  child: Checkbox(
+                                                    value: _rememberMe,
+                                                    onChanged: (value) =>
+                                                        setState(() =>
+                                                            _rememberMe =
+                                                                value ?? false),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                    ),
+                                                    side: BorderSide(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                              alpha: 0.5),
+                                                    ),
+                                                    checkColor: Colors.black,
+                                                    fillColor:
+                                                        WidgetStateProperty
+                                                            .resolveWith(
+                                                                (states) {
+                                                      if (states.contains(
+                                                          WidgetState
+                                                              .selected)) {
+                                                        return Colors.white;
+                                                      }
+                                                      return Colors.transparent;
+                                                    }),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                lang.translate('remember_me'),
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pushNamed(context,
+                                                    '/forgot-password'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.white
                                                   .withValues(alpha: 0.7),
+                                            ),
+                                            child: Text(
+                                              lang.translate('forgot_password'),
+                                              style: GoogleFonts.spaceGrotesk(
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pushNamed(
-                                            context, '/forgot-password'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.white
-                                              .withValues(alpha: 0.7),
-                                        ),
-                                        child: Text(
-                                          lang.translate('forgot_password'),
-                                          style: GoogleFonts.spaceGrotesk(
-                                            fontWeight: FontWeight.w600,
+                                      const SizedBox(height: 32),
+                                      _buildLoginButton(
+                                        onPressed: _isLoading
+                                            ? null
+                                            : () => _handleLogin(context),
+                                        isLoading: _isLoading,
+                                        label: lang.translate('login'),
+                                      ),
+                                      const Spacer(),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            lang.translate('new_user_prompt'),
+                                            style: GoogleFonts.spaceGrotesk(
+                                              color: Colors.white
+                                                  .withAlpha(179), // 0.7 * 255
+                                            ),
                                           ),
-                                        ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pushNamed(
+                                                    context, '/register'),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.white,
+                                            ),
+                                            child: Text(
+                                              lang.translate('register'),
+                                              style: GoogleFonts.spaceGrotesk(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 32),
-                                  _buildLoginButton(
-                                    onPressed: _isLoading
-                                        ? null
-                                        : () => _handleLogin(context),
-                                    isLoading: _isLoading,
-                                    label: lang.translate('login'),
-                                  ),
-                                  const Spacer(),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        lang.translate('new_user_prompt'),
-                                        style: GoogleFonts.spaceGrotesk(
-                                          color: Colors.white
-                                              .withAlpha(179), // 0.7 * 255
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pushNamed(
-                                            context, '/register'),
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                        ),
-                                        child: Text(
-                                          lang.translate('register'),
-                                          style: GoogleFonts.spaceGrotesk(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

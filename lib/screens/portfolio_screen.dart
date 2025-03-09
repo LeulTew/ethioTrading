@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui';
 import 'dart:math' as math;
 import '../data/mock_data.dart';
 import '../providers/language_provider.dart';
 // Removed unused import: '../providers/portfolio_provider.dart'
 import '../providers/auth_provider.dart';
-import '../theme/app_theme.dart';
 import '../models/asset.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -28,7 +26,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
   double _todayGain = 0;
   double _totalGain = 0;
   bool _isLoading = true;
-  int _selectedTimeRange = 1; // 0: 1D, 1: 1W, 2: 1M, 3: 3M, 4: 1Y, 5: ALL
+// 0: 1D, 1: 1W, 2: 1M, 3: 3M, 4: 1Y, 5: ALL
 
   @override
   void initState() {
@@ -86,37 +84,99 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
-      // Remove the app bar to eliminate the back button
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(theme, lang),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TabBar(
-                controller: _tabController,
-                labelColor: theme.colorScheme.primary,
-                unselectedLabelColor: theme.colorScheme.onSurface
-                    .withAlpha(60), // Fixed: 0.6 -> 60
-                indicatorColor: theme.colorScheme.primary,
-                tabs: [
-                  Tab(text: lang.translate('overview')),
-                  Tab(text: lang.translate('holdings')),
-                  Tab(text: lang.translate('history')),
-                ],
-              ),
+            TabBar(
+              controller: _tabController,
+              labelStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+              tabs: [
+                Tab(text: lang.translate('overview')),
+                Tab(text: lang.translate('holdings')),
+                Tab(text: lang.translate('transactions')),
+              ],
             ),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildOverviewTab(theme, currencyFormatter, lang),
-                        _buildHoldingsTab(theme, currencyFormatter, lang),
-                        _buildTransactionsTab(theme, currencyFormatter, lang),
-                      ],
-                    ),
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 600),
+                                  child: Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            lang.translate(
+                                                'total_portfolio_value'),
+                                            style: theme.textTheme.titleMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            currencyFormatter
+                                                .format(_totalValue),
+                                            style: GoogleFonts.spaceGrotesk(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              _buildGainLossWidget(
+                                                lang.translate('today'),
+                                                _todayGain,
+                                                _todayGain >= 0,
+                                                theme,
+                                                currencyFormatter,
+                                              ),
+                                              _buildGainLossWidget(
+                                                lang.translate('total'),
+                                                _totalGain,
+                                                _totalGain >= 0,
+                                                theme,
+                                                currencyFormatter,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                _buildPortfolioChart(theme, lang),
+                                const SizedBox(height: 24),
+                                _buildDistributionChart(theme, lang),
+                                if (_purchasedAssets.isNotEmpty) ...[
+                                  const SizedBox(height: 24),
+                                  _buildPurchasedAssetsSection(
+                                      theme, currencyFormatter, lang),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                  _buildHoldingsTab(theme, currencyFormatter, lang),
+                  _buildTransactionsTab(theme, currencyFormatter, lang),
+                ],
+              ),
             ),
           ],
         ),
@@ -199,152 +259,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     });
   }
 
-  Widget _buildOverviewTab(
-      ThemeData theme, NumberFormat currencyFormatter, LanguageProvider lang) {
-    final isPositiveTodayGain = _todayGain >= 0;
-    final isPositiveTotalGain = _totalGain >= 0;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: AppTheme.primaryGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(25), // Fixed: 0.1 -> 25
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(25), // Fixed: 0.1 -> 25
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          lang.translate('portfolio_value'),
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          currencyFormatter.format(_totalValue),
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildGainLossWidget(
-                              lang.translate('today'),
-                              _todayGain,
-                              isPositiveTodayGain,
-                              theme,
-                              currencyFormatter,
-                            ),
-                            _buildGainLossWidget(
-                              lang.translate('total_return'),
-                              _totalGain,
-                              isPositiveTotalGain,
-                              theme,
-                              currencyFormatter,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTimeRangeSelector(theme, lang),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildPortfolioChart(theme, lang),
-          const SizedBox(height: 20),
-          _buildDistributionChart(theme, lang),
-
-          // Display purchased assets section if available
-          if (_purchasedAssets.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            _buildPurchasedAssetsSection(theme, currencyFormatter, lang),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeRangeSelector(ThemeData theme, LanguageProvider lang) {
-    final ranges = ['1D', '1W', '1M', '3M', '1Y', 'ALL'];
-
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(38), // Fixed: 0.15 -> 38
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: List.generate(ranges.length, (index) {
-          final isSelected = index == _selectedTimeRange;
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTimeRange = index;
-                  // Update chart data based on selected time range
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  ranges[index],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? AppTheme.primaryGradient.first
-                        : Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
 
   Widget _buildGainLossWidget(String label, double value, bool isPositive,
       ThemeData theme, NumberFormat currencyFormatter) {

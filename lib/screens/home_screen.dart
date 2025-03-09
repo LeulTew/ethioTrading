@@ -232,15 +232,15 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isInCard
-            ? Colors.white.withValues(alpha: 0.1)
-            : (color ?? theme.colorScheme.primary).withValues(alpha: 0.08),
+            ? Colors.white.withAlpha(26) // 0.1 * 255
+            : (color ?? theme.colorScheme.primary).withAlpha(51), // 0.2 * 255
         borderRadius: BorderRadius.circular(16),
         boxShadow: isInCard
             ? []
             : [
                 BoxShadow(
                   color: (color ?? theme.colorScheme.primary)
-                      .withValues(alpha: 0.05),
+                      .withAlpha(13), // 0.05 * 255
                   blurRadius: 8,
                   spreadRadius: 0,
                   offset: const Offset(0, 2),
@@ -257,16 +257,18 @@ class _HomeScreenState extends State<HomeScreen>
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isInCard
-                      ? Colors.white.withValues(alpha: 0.2)
+                      ? Colors.white.withAlpha(51) // 0.2 * 255
                       : (color ?? theme.colorScheme.primary)
-                          .withValues(alpha: 0.15),
+                          .withAlpha(38), // 0.15 * 255
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon,
-                    size: 14,
-                    color: isInCard
-                        ? Colors.white
-                        : (color ?? theme.colorScheme.primary)),
+                child: Icon(
+                  icon,
+                  size: 14,
+                  color: isInCard
+                      ? Colors.white
+                      : (color ?? theme.colorScheme.primary),
+                ),
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -274,9 +276,9 @@ class _HomeScreenState extends State<HomeScreen>
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: isInCard
-                        ? Colors.white.withValues(alpha: 0.9)
+                        ? Colors.white.withAlpha(230) // 0.9 * 255
                         : theme.textTheme.bodyLarge?.color
-                            ?.withValues(alpha: 0.7),
+                            ?.withAlpha(179), // 0.7 * 255
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.3,
                   ),
@@ -293,7 +295,6 @@ class _HomeScreenState extends State<HomeScreen>
               color: isInCard
                   ? Colors.white
                   : (color ?? theme.colorScheme.onSurface),
-              letterSpacing: -0.3,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -307,13 +308,13 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: _isMarketOpen
-            ? const Color(0xFF059669).withValues(alpha: 0.1)
-            : theme.colorScheme.error.withValues(alpha: 0.1),
+            ? const Color(0xFF059669).withAlpha(26) // 0.1 * 255
+            : theme.colorScheme.error.withAlpha(26),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: _isMarketOpen
-              ? const Color(0xFF059669).withValues(alpha: 0.3)
-              : theme.colorScheme.error.withValues(alpha: 0.3),
+              ? const Color(0xFF059669).withAlpha(77) // 0.3 * 255
+              : theme.colorScheme.error.withAlpha(77),
         ),
       ),
       child: Row(
