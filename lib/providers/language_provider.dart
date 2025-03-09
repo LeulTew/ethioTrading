@@ -403,7 +403,7 @@ const Map<String, String> amharicTranslations = {
   'international_market_index': 'ዓለም አቀፍ ገበያ ኢንዴክስ',
   'ethiopian_news': 'የኢትዮጵያ ዜናዎች',
   'markets': 'ገበያዎች',
-  'no_search_results': 'ምንም የፍለጋ ውጤቶች አልተገኙም',
+  'no_search_results': 'ምንም የፍለጋ ውጤቶች',
   'no_assets_available': 'ምንም ንብረቶች አልተገኙም',
   'no_news_available': 'ምንም ዜናዎች አልተገኙም',
 
@@ -595,4 +595,24 @@ const Map<String, String> amharicTranslations = {
   // User action confirmations
   'saved_to_favorites': 'ወደ ተወዳጆች ተመዝግቧል',
   'removed_from_favorites': 'ከተወዳጆች ተወግዷል',
+
+  // Add these sector translations to the amharicTranslations map
+  'bank': 'ባንክ',
+  'transport': 'ትራንስፖርት',
+  'telecom': 'ቴሌኮም',
+  'utility': 'አገልግሎት',
+  'agriculture': 'እርሻ',
+  'manufacturing': 'ማምረቻ',
+  'all_sectors': 'ሁሉም ዘርፎች',
+  'market_summary': 'የገበያ ማጠቃለያ',
+  'search_stocks': 'አክሲዮኖችን ይፈልጉ',
+  // Removing duplicate keys that already exist in the map
+  // 'volume': 'መጠን',
+  // 'gainers': 'አትራፊዎች',
+  // 'losers': 'ኪሳራ ያጋጠማቸው',
+  // 'all': 'ሁሉም',
+  // 'ethiopian': 'ኢትዮጵያዊ',
+  // 'international': 'ዓለምአቀፍ',
+  // 'market_open': 'ገበያ ክፍት',
+  // 'market_closed': 'ገበያ ዝግ',
 };

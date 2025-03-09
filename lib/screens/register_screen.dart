@@ -118,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen>
 
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
+      // Navigate to login screen after successful registration
       Navigator.pushReplacementNamed(context, '/');
     } catch (e) {
       if (!mounted) return;

@@ -7,31 +7,51 @@ import '../config/env.dart';
 class MarketDataService {
   final _logger = Logger('MarketDataService');
 
-  // Free API endpoints for stock data
-  static const String _finnhubBaseUrl = 'https://finnhub.io/api/v1';
-  static const String _alphaVantageBaseUrl =
-      'https://www.alphavantage.co/query';
+  // Free API endpoints for stock data now use constants from env.dart
+  static const String _finnhubBaseUrl = Env.finnhubBaseUrl;
+  static const String _alphaVantageBaseUrl = Env.alphaVantageBaseUrl;
 
   // API keys from environment configuration
-  final String _finnhubApiKey = Env.finnhubApiKey;
-  final String _alphaVantageApiKey = Env.alphaVantageApiKey;
+  final String _finnhubApiKey;
+  final String _alphaVantageApiKey;
 
-  // List of international stocks to track
+  // List of international stocks to track - Enhanced with more variety
   static const List<String> _internationalSymbols = [
-    'AAPL',
-    'MSFT',
-    'GOOGL',
-    'AMZN',
-    'META',
-    'TSLA',
-    'NVDA',
-    'JPM',
-    'V',
-    'JNJ'
+    'AAPL', // Apple
+    'MSFT', // Microsoft
+    'GOOGL', // Alphabet/Google
+    'AMZN', // Amazon
+    'META', // Meta/Facebook
+    'TSLA', // Tesla
+    'NVDA', // NVIDIA
+    'JPM', // JPMorgan Chase
+    'V', // Visa
+    'JNJ', // Johnson & Johnson
+    'BABA', // Alibaba Group
+    'TSM', // Taiwan Semiconductor
+    'WMT', // Walmart
+    'KO', // Coca-Cola
+    'DIS', // Disney
   ];
 
-  MarketDataService() {
+  // Constructor with API key handling
+  MarketDataService()
+      : _finnhubApiKey = Env.finnhubApiKey,
+        _alphaVantageApiKey = Env.alphaVantageApiKey {
     _logger.info('MarketDataService initialized');
+    _validateApiKeys();
+  }
+
+  // Validate API keys are available and not empty
+  void _validateApiKeys() {
+    if (_finnhubApiKey.isEmpty || _finnhubApiKey == 'YOUR_API_KEY_HERE') {
+      _logger.warning('Finnhub API key is not configured properly');
+    }
+
+    if (_alphaVantageApiKey.isEmpty ||
+        _alphaVantageApiKey == 'YOUR_API_KEY_HERE') {
+      _logger.warning('Alpha Vantage API key is not configured properly');
+    }
   }
 
   // Fetch real-time stock data for international markets
@@ -53,15 +73,169 @@ class MarketDataService {
           _logger.warning('Error fetching data for $symbol: $e');
         }
       }
+
+      _logger.info('Fetched ${assets.length} international stocks');
     } catch (e) {
       _logger.severe('Error fetching international stocks: $e');
+
+      // Use cached data or generate fallback data if API fails
+      if (assets.isEmpty) {
+        assets = _generateFallbackStockData();
+        _logger.info('Using fallback stock data since API request failed');
+      }
     }
 
     return assets;
   }
 
+  // Fallback method to generate mock data when API fails
+  List<Asset> _generateFallbackStockData() {
+    return _internationalSymbols.map((symbol) {
+      final basePrice = _getBasePrice(symbol);
+      final change = (basePrice * (_getRandomValue() * 0.1)).round() / 100;
+      final price = basePrice + change;
+
+      return Asset(
+        name: _getCompanyName(symbol),
+        symbol: symbol,
+        sector: _getSector(symbol),
+        ownership: 'Public',
+        price: price,
+        change: change,
+        changePercent: (change / basePrice) * 100,
+        volume: _getBaseVolume(symbol) * (0.8 + _getRandomValue() * 0.4),
+        marketCap: price * _getBaseShares(symbol),
+        lastUpdated: DateTime.now(),
+        dayHigh: price * (1 + _getRandomValue() * 0.03),
+        dayLow: price * (1 - _getRandomValue() * 0.03),
+        openPrice: basePrice,
+        lotSize: 1,
+        tickSize: 0.01,
+      );
+    }).toList();
+  }
+
+  double _getRandomValue() {
+    return (DateTime.now().millisecondsSinceEpoch % 100) / 100;
+  }
+
+  double _getBasePrice(String symbol) {
+    switch (symbol) {
+      case 'AAPL':
+        return 175.0;
+      case 'MSFT':
+        return 350.0;
+      case 'GOOGL':
+        return 130.0;
+      case 'AMZN':
+        return 140.0;
+      case 'META':
+        return 300.0;
+      case 'TSLA':
+        return 220.0;
+      case 'NVDA':
+        return 450.0;
+      case 'JPM':
+        return 145.0;
+      case 'V':
+        return 250.0;
+      case 'JNJ':
+        return 155.0;
+      case 'BABA':
+        return 85.0;
+      case 'TSM':
+        return 130.0;
+      case 'WMT':
+        return 60.0;
+      case 'KO':
+        return 60.0;
+      case 'DIS':
+        return 90.0;
+      default:
+        return 100.0;
+    }
+  }
+
+  double _getBaseVolume(String symbol) {
+    switch (symbol) {
+      case 'AAPL':
+        return 55000000;
+      case 'MSFT':
+        return 25000000;
+      case 'GOOGL':
+        return 20000000;
+      case 'AMZN':
+        return 30000000;
+      case 'META':
+        return 22000000;
+      case 'TSLA':
+        return 100000000;
+      case 'NVDA':
+        return 40000000;
+      default:
+        return 10000000 + (_getRandomValue() * 10000000);
+    }
+  }
+
+  double _getBaseShares(String symbol) {
+    switch (symbol) {
+      case 'AAPL':
+        return 16000000000;
+      case 'MSFT':
+        return 7500000000;
+      case 'GOOGL':
+        return 13000000000;
+      case 'AMZN':
+        return 10000000000;
+      case 'META':
+        return 2500000000;
+      case 'TSLA':
+        return 3200000000;
+      default:
+        return 1000000000 + (_getRandomValue() * 5000000000);
+    }
+  }
+
+  String _getSector(String symbol) {
+    switch (symbol) {
+      case 'AAPL':
+      case 'MSFT':
+      case 'GOOGL':
+      case 'META':
+      case 'NVDA':
+      case 'TSM':
+        return 'Technology';
+      case 'AMZN':
+      case 'WMT':
+        return 'Retail';
+      case 'TSLA':
+        return 'Automotive';
+      case 'JPM':
+      case 'V':
+        return 'Financial';
+      case 'JNJ':
+        return 'Healthcare';
+      case 'BABA':
+        return 'E-commerce';
+      case 'KO':
+        return 'Consumer Goods';
+      case 'DIS':
+        return 'Entertainment';
+      default:
+        return 'International';
+    }
+  }
+
   // Fetch stock data from Alpha Vantage API
   Future<Asset?> _fetchStockFromAlphaVantage(String symbol) async {
+    // Skip API call if key is not configured
+    if (_alphaVantageApiKey.isEmpty ||
+        _alphaVantageApiKey == 'YOUR_API_KEY_HERE') {
+      _logger
+          .warning('Alpha Vantage API key not configured, skipping API call');
+      return null;
+    }
+
     final url =
         '$_alphaVantageBaseUrl?function=GLOBAL_QUOTE&symbol=$symbol&apikey=$_alphaVantageApiKey';
 
@@ -72,6 +246,7 @@ class MarketDataService {
         final data = json.decode(response.body);
 
         if (data.containsKey('Global Quote') &&
+            data['Global Quote'] != null &&
             data['Global Quote'].isNotEmpty) {
           final quote = data['Global Quote'];
 
@@ -81,32 +256,41 @@ class MarketDataService {
           final lowPrice = double.parse(quote['04. low']);
           final changePercent =
               double.parse(quote['10. change percent'].replaceAll('%', ''));
+          final change = double.parse(quote['09. change']);
+          final volume = double.parse(quote['06. volume']);
 
           return Asset(
             name: _getCompanyName(symbol),
             symbol: symbol,
-            sector: 'International',
+            sector: _getSector(symbol),
             ownership: 'Public',
             price: price,
-            change: changePercent,
+            change: change,
             changePercent: changePercent,
-            volume: double.parse(quote['06. volume']),
-            marketCap: 0.0, // Not provided in this API
+            volume: volume,
+            marketCap: price * _getBaseShares(symbol), // Estimated market cap
             lastUpdated: DateTime.now(),
             dayHigh: highPrice,
             dayLow: lowPrice,
             openPrice: openPrice,
+            lotSize: 1,
+            tickSize: 0.01,
           );
+        } else {
+          _logger.warning(
+              'Unexpected data format from Alpha Vantage for $symbol: $data');
         }
+      } else {
+        _logger.warning(
+            'Failed to fetch data for $symbol: HTTP ${response.statusCode}');
       }
     } catch (e) {
       _logger.warning('Error fetching Alpha Vantage data for $symbol: $e');
     }
 
+    // Return null if we couldn't fetch valid data
     return null;
   }
-
-
 
   // Helper method to get company names
   String _getCompanyName(String symbol) {
@@ -131,6 +315,16 @@ class MarketDataService {
         return 'Visa Inc.';
       case 'JNJ':
         return 'Johnson & Johnson';
+      case 'BABA':
+        return 'Alibaba Group Holding Ltd.';
+      case 'TSM':
+        return 'Taiwan Semiconductor Manufacturing Co.';
+      case 'WMT':
+        return 'Walmart Inc.';
+      case 'KO':
+        return 'Coca-Cola Company';
+      case 'DIS':
+        return 'Walt Disney Company';
       default:
         return symbol;
     }
@@ -141,6 +335,12 @@ class MarketDataService {
     _logger.info('Fetching detailed data for $symbol');
     Map<String, dynamic> details = {};
 
+    if (_finnhubApiKey.isEmpty || _finnhubApiKey == 'YOUR_API_KEY_HERE') {
+      _logger
+          .warning('Finnhub API key not configured, returning empty details');
+      return details;
+    }
+
     try {
       // Company profile from Finnhub
       final profileUrl =
@@ -150,6 +350,9 @@ class MarketDataService {
       if (profileResponse.statusCode == 200) {
         final profileData = json.decode(profileResponse.body);
         details['profile'] = profileData;
+      } else {
+        _logger.warning(
+            'Failed to fetch profile for $symbol: HTTP ${profileResponse.statusCode}');
       }
 
       // Basic financials from Finnhub
@@ -160,6 +363,9 @@ class MarketDataService {
       if (financialsResponse.statusCode == 200) {
         final financialsData = json.decode(financialsResponse.body);
         details['financials'] = financialsData;
+      } else {
+        _logger.warning(
+            'Failed to fetch financials for $symbol: HTTP ${financialsResponse.statusCode}');
       }
     } catch (e) {
       _logger.severe('Error fetching stock details for $symbol: $e');
@@ -174,6 +380,12 @@ class MarketDataService {
     _logger.info('Fetching historical data for $symbol');
     List<Map<String, dynamic>> candles = [];
 
+    if (_finnhubApiKey.isEmpty || _finnhubApiKey == 'YOUR_API_KEY_HERE') {
+      _logger.warning(
+          'Finnhub API key not configured, returning empty historical data');
+      return candles;
+    }
+
     try {
       // Candle data from Finnhub
       final url =
@@ -185,11 +397,16 @@ class MarketDataService {
 
         if (data['s'] == 'ok') {
           final timestamps = List<int>.from(data['t']);
-          final opens = List<double>.from(data['o']);
-          final highs = List<double>.from(data['h']);
-          final lows = List<double>.from(data['l']);
-          final closes = List<double>.from(data['c']);
-          final volumes = List<double>.from(data['v']);
+          final opens =
+              List<double>.from(data['o'].map((e) => (e as num).toDouble()));
+          final highs =
+              List<double>.from(data['h'].map((e) => (e as num).toDouble()));
+          final lows =
+              List<double>.from(data['l'].map((e) => (e as num).toDouble()));
+          final closes =
+              List<double>.from(data['c'].map((e) => (e as num).toDouble()));
+          final volumes =
+              List<double>.from(data['v'].map((e) => (e as num).toDouble()));
 
           for (int i = 0; i < timestamps.length; i++) {
             candles.add({
@@ -201,7 +418,12 @@ class MarketDataService {
               'volume': volumes[i],
             });
           }
+        } else {
+          _logger.warning('Error in response from Finnhub: ${data['s']}');
         }
+      } else {
+        _logger.warning(
+            'Failed to fetch historical data for $symbol: HTTP ${response.statusCode}');
       }
     } catch (e) {
       _logger.severe('Error fetching historical data for $symbol: $e');

@@ -1,405 +1,523 @@
 import 'dart:convert';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:logging/logging.dart';
 import '../models/asset.dart';
+import '../data/ethio_data.dart';
 import '../config/env.dart';
+import 'package:logging/logging.dart';
+import '../data/mock_data.dart';
 
 class ApiService {
+  final FirebaseDatabase _database;
+  final FirebaseAuth _auth;
   final Logger _logger = Logger('ApiService');
+  final String _cachedAssetsKey = 'cached_ethiopian_assets';
+  final String _lastUpdateTimeKey = 'last_update_time';
 
-  // Use API keys from environment file
-  final String _alphaVantageApiKey = Env.alphaVantageApiKey;
-  final String _finnhubApiKey = Env.finnhubApiKey;
+  ApiService({
+    required FirebaseDatabase database,
+    required FirebaseAuth auth,
+  })  : _database = database,
+        _auth = auth;
 
-  // Base URLs
-  static const String _alphaVantageBaseUrl =
-      'https://www.alphavantage.co/query';
-  static const String _finnhubBaseUrl = 'https://finnhub.io/api/v1';
-
-  // Fetch international market data using real APIs
+  // Fetch international market data using the market data service
   Future<List<Asset>> fetchInternationalMarketData() async {
+    _logger.info('Fetching international market data');
     List<Asset> assets = [];
 
     try {
-      // First try Alpha Vantage for top gainers/losers
-      final alphaVantageAssets = await _fetchFromAlphaVantage();
-      if (alphaVantageAssets.isNotEmpty) {
-        assets.addAll(alphaVantageAssets);
+      // First check for cached data to prevent CORS issues on web
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final cachedData = sharedPrefs.getString('cached_international_assets');
+      final lastUpdate =
+          sharedPrefs.getInt('international_last_update_time') ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Use cached data if it's less than 30 minutes old
+      if (cachedData != null && now - lastUpdate < 1800000) {
+        _logger.info('Using cached international market data');
+        final List<dynamic> decoded = json.decode(cachedData);
+        assets = decoded.map((item) => Asset.fromJson(item)).toList();
+        return assets;
       }
 
-      // If we didn't get enough data, supplement with Finnhub data for major stocks
-      if (assets.length < 5) {
-        final majorSymbols = [
-          'AAPL',
-          'MSFT',
-          'GOOGL',
-          'AMZN',
-          'TSLA',
-          'META',
-          'NFLX',
-          'JPM'
-        ];
-        for (final symbol in majorSymbols) {
-          try {
-            final asset = await _fetchFromFinnhub(symbol);
-            if (asset != null) {
-              assets.add(asset);
-            }
-          } catch (e) {
-            _logger.warning('Error fetching $symbol from Finnhub: $e');
-          }
+      // If no valid cache, try to fetch from API with error handling for CORS
+      try {
+        // Use a proxy endpoint to avoid CORS issues in web
+        const url = '${Env.apiProxyUrl}/market/stocks';
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {'X-API-Key': Env.apiKey},
+        ).timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          assets = (data['stocks'] as List)
+              .map((item) => Asset.fromJson(item))
+              .toList();
+
+          // Cache the fetched data
+          sharedPrefs.setString('cached_international_assets',
+              json.encode(assets.map((a) => a.toJson()).toList()));
+          sharedPrefs.setInt('international_last_update_time', now);
+
+          _logger.info(
+              'Successfully fetched ${assets.length} international stocks');
+        } else {
+          throw Exception(
+              'API request failed with status: ${response.statusCode}');
         }
+      } catch (e) {
+        _logger.warning('API request failed: $e, generating fallback data');
+        // If API request fails, generate fallback data
+        assets = _generateFallbackInternationalAssets();
+
+        // Cache the fallback data
+        sharedPrefs.setString('cached_international_assets',
+            json.encode(assets.map((a) => a.toJson()).toList()));
+        sharedPrefs.setInt('international_last_update_time', now);
       }
     } catch (e) {
-      _logger.severe('Error fetching international market data: $e');
-    }
-
-    // If we still don't have data, use fallback data as a last resort
-    if (assets.isEmpty) {
-      _logger.warning('Using fallback international market data');
-      return _getFallbackInternationalData();
+      _logger.severe('Error in fetchInternationalMarketData: $e');
+      assets = _generateFallbackInternationalAssets();
     }
 
     return assets;
   }
 
-  // Fetch data from Alpha Vantage
-  Future<List<Asset>> _fetchFromAlphaVantage() async {
+  // Helper method to generate fallback international data
+  List<Asset> _generateFallbackInternationalAssets() {
+    _logger.info('Generating fallback international market data');
+    final stocks = [
+      {
+        'name': 'Apple Inc.',
+        'symbol': 'AAPL',
+        'price': 175.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
+        'change': 1.2,
+        'volume': 36500000,
+        'sector': 'Technology'
+      },
+      {
+        'name': 'Microsoft Corporation',
+        'symbol': 'MSFT',
+        'price': 350.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
+        'change': 0.8,
+        'volume': 22000000,
+        'sector': 'Technology'
+      },
+      {
+        'name': 'Amazon.com Inc.',
+        'symbol': 'AMZN',
+        'price': 140.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
+        'change': -0.5,
+        'volume': 28000000,
+        'sector': 'Consumer Cyclical'
+      },
+      {
+        'name': 'Tesla Inc.',
+        'symbol': 'TSLA',
+        'price': 220.0 + (DateTime.now().millisecondsSinceEpoch % 15) - 7,
+        'change': -1.3,
+        'volume': 95000000,
+        'sector': 'Automotive'
+      },
+      {
+        'name': 'Alphabet Inc.',
+        'symbol': 'GOOGL',
+        'price': 130.0 + (DateTime.now().millisecondsSinceEpoch % 8) - 4,
+        'change': 0.6,
+        'volume': 19000000,
+        'sector': 'Technology'
+      },
+    ];
+
+    return stocks
+        .map((item) => Asset(
+              name: item['name'] as String,
+              symbol: item['symbol'] as String,
+              price: item['price'] as double,
+              change: item['change'] as double,
+              changePercent:
+                  (item['change'] as double) * 100 / (item['price'] as double),
+              volume: item['volume'] as double,
+              sector: item['sector'] as String,
+              ownership: 'Public',
+              marketCap:
+                  (item['price'] as double) * (item['volume'] as double) * 10,
+              lastUpdated: DateTime.now(),
+              dayHigh: (item['price'] as double) +
+                  ((item['price'] as double) * 0.02),
+              dayLow: (item['price'] as double) -
+                  ((item['price'] as double) * 0.02),
+              openPrice: (item['price'] as double) - (item['change'] as double),
+              lotSize: 1,
+              tickSize: 0.01,
+            ))
+        .toList();
+  }
+
+  // Cache Ethiopian assets to shared preferences
+  Future<void> saveEthiopianAssetsToCache(List<Asset> assets) async {
+    _logger.info('Caching ${assets.length} Ethiopian assets locally');
     try {
-      final response = await http.get(Uri.parse(
-          '$_alphaVantageBaseUrl?function=TOP_GAINERS_LOSERS&apikey=$_alphaVantageApiKey'));
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final jsonData = json.encode(assets.map((a) => a.toJson()).toList());
+      await sharedPrefs.setString(_cachedAssetsKey, jsonData);
+      await sharedPrefs.setInt(
+          _lastUpdateTimeKey, DateTime.now().millisecondsSinceEpoch);
+
+      // Also save to Firebase if user is logged in
+      await _saveEthiopianAssetsToFirebase(assets);
+    } catch (e) {
+      _logger.warning('Error caching Ethiopian assets: $e');
+    }
+  }
+
+  // Save Ethiopian assets to Firebase for all users
+  Future<void> _saveEthiopianAssetsToFirebase(List<Asset> assets) async {
+    try {
+      // Check if user is authenticated
+      final user = _auth.currentUser;
+      if (user == null) {
+        _logger.info('No user logged in, skipping Firebase save');
+        return;
+      }
+
+      _logger.info('Saving Ethiopian assets to Firebase');
+      final dbRef = _database.ref('market_data/ethiopian_assets');
+
+      // Convert assets to JSON format
+      final dataToSave = {
+        'lastUpdated': ServerValue.timestamp,
+        'assets': assets.map((a) => a.toJson()).toList(),
+      };
+
+      // Save to Firebase
+      await dbRef.set(dataToSave);
+      _logger.info('Successfully saved Ethiopian assets to Firebase');
+    } catch (e) {
+      _logger.warning('Error saving Ethiopian assets to Firebase: $e');
+    }
+  }
+
+  // Get cached Ethiopian assets from shared preferences
+  Future<List<Asset>> getCachedEthiopianAssets() async {
+    _logger.info('Getting cached Ethiopian assets');
+    try {
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final cachedData = sharedPrefs.getString(_cachedAssetsKey);
+      final lastUpdate = sharedPrefs.getInt(_lastUpdateTimeKey) ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // If cache is valid (less than 1 hour old)
+      if (cachedData != null && now - lastUpdate < 3600000) {
+        _logger.info('Found valid cached Ethiopian assets');
+        final List<dynamic> decoded = json.decode(cachedData);
+        return decoded.map((item) => Asset.fromJson(item)).toList();
+      }
+
+      // If local cache is not valid, try retrieving from Firebase
+      return await _getEthiopianAssetsFromFirebase();
+    } catch (e) {
+      _logger.warning('Error getting cached Ethiopian assets: $e');
+      return [];
+    }
+  }
+
+  // Get Ethiopian assets from Firebase
+  Future<List<Asset>> _getEthiopianAssetsFromFirebase() async {
+    _logger.info('Getting Ethiopian assets from Firebase');
+    try {
+      final dbRef = _database.ref('market_data/ethiopian_assets');
+      final snapshot = await dbRef.get();
+
+      if (snapshot.exists) {
+        _logger.info('Found Ethiopian assets in Firebase');
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        final assetsList = (data['assets'] as List<dynamic>);
+
+        final assets = assetsList.map((item) {
+          final jsonItem = Map<String, dynamic>.from(item as Map);
+          return Asset.fromJson(jsonItem);
+        }).toList();
+
+        // Update local cache
+        final sharedPrefs = await SharedPreferences.getInstance();
+        await sharedPrefs.setString(_cachedAssetsKey,
+            json.encode(assets.map((a) => a.toJson()).toList()));
+        await sharedPrefs.setInt(
+            _lastUpdateTimeKey, DateTime.now().millisecondsSinceEpoch);
+
+        return assets;
+      }
+
+      _logger.info('No Ethiopian assets found in Firebase');
+      return [];
+    } catch (e) {
+      _logger.warning('Error getting Ethiopian assets from Firebase: $e');
+      return [];
+    }
+  }
+
+  // Generate Ethiopian assets using EthioData
+  Future<List<Asset>> generateAndCacheEthiopianAssets() async {
+    _logger.info('Generating Ethiopian market data');
+    try {
+      final ethioMarketData = EthioData.generateMockEthioMarketData();
+      final ethiopianAssets = ethioMarketData
+          .map((data) => Asset(
+                name: data['name'] as String,
+                symbol: data['symbol'] as String,
+                price: data['price'] as double,
+                change: data['change'] as double,
+                changePercent: data['change'] as double,
+                volume: data['volume'] as double,
+                sector: data['sector'] as String,
+                ownership: data['ownership'] as String,
+                marketCap: data['marketCap'] as double,
+                lastUpdated: DateTime.now(),
+                dayHigh: data['dayHigh'] as double,
+                dayLow: data['dayLow'] as double,
+                openPrice: data['openPrice'] as double,
+                lotSize: data['lotSize'] as int? ?? 1,
+                tickSize: data['tickSize'] as double? ?? 0.05,
+              ))
+          .toList();
+
+      // Cache the generated assets
+      await saveEthiopianAssetsToCache(ethiopianAssets);
+
+      return ethiopianAssets;
+    } catch (e) {
+      _logger.severe('Error generating Ethiopian assets: $e');
+      return [];
+    }
+  }
+
+  // Get market chart data
+  Future<List<Map<String, dynamic>>> getMarketChartData() async {
+    _logger.info('Getting market chart data');
+    try {
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final cachedData = sharedPrefs.getString('market_chart_data');
+      final lastUpdate = sharedPrefs.getInt('chart_data_updated') ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Use cached chart data if less than 1 hour old
+      if (cachedData != null && now - lastUpdate < 3600000) {
+        return List<Map<String, dynamic>>.from(json.decode(cachedData));
+      }
+
+      // Generate new chart data
+      final chartData = _generateChartData();
+
+      // Cache the chart data
+      await sharedPrefs.setString('market_chart_data', json.encode(chartData));
+      await sharedPrefs.setInt('chart_data_updated', now);
+
+      return chartData;
+    } catch (e) {
+      _logger.warning('Error getting market chart data: $e');
+      return _generateChartData();
+    }
+  }
+
+  // Helper function to generate mock chart data
+  List<Map<String, dynamic>> _generateChartData() {
+    _logger.info('Generating mock chart data');
+    final random = DateTime.now().millisecondsSinceEpoch;
+    final baseValue = 1000.0 + (random % 200);
+    final data = <Map<String, dynamic>>[];
+
+    // Generate daily data for the past 30 days
+    final now = DateTime.now();
+    for (int i = 30; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final changePercent = ((random >> i) % 100) / 1000.0;
+      final value = baseValue * (1 + (changePercent * i));
+
+      data.add({
+        'date': date.toIso8601String().substring(0, 10),
+        'value': value,
+        'volume': 1000000.0 + (random % 2000000),
+      });
+    }
+
+    return data;
+  }
+
+  // Get Ethiopian assets from Firebase first, then cache
+  Future<List<Asset>> fetchEthiopianAssets() async {
+    try {
+      _logger.info('Fetching Ethiopian assets from Firebase');
+      final snapshot = await _database.ref('marketData/ethiopian').get();
+
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+
+        // Skip metadata
+        data.remove('_metadata');
+
+        List<Asset> assets = [];
+        data.forEach((key, value) {
+          try {
+            assets.add(Asset.fromMap(Map<String, dynamic>.from(value)));
+          } catch (e) {
+            _logger.warning('Error parsing Ethiopian asset data: $e');
+          }
+        });
+
+        if (assets.isNotEmpty) {
+          // Update local cache
+          await saveEthiopianAssetsToCache(assets);
+          return assets;
+        }
+      }
+
+      // If no Firebase data, generate new
+      return await generateAndCacheEthiopianAssets();
+    } catch (e) {
+      _logger.severe('Error fetching Ethiopian assets from Firebase: $e');
+
+      // Fallback to cache or generate new
+      final cachedAssets = await getCachedEthiopianAssets();
+      if (cachedAssets.isNotEmpty) {
+        return cachedAssets;
+      }
+
+      return await generateAndCacheEthiopianAssets();
+    }
+  }
+
+  // Fetch news for a specific stock
+  Future<List<Map<String, dynamic>>> fetchStockNews(String symbol) async {
+    try {
+      final snapshot = await _database.ref('news/stocks/$symbol').get();
+
+      if (snapshot.exists) {
+        final data = snapshot.value as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      }
+
+      // Generate mock news if no data
+      final mockNews = MockDataGenerator.generateNewsForStock(symbol);
+
+      // Save to Firebase
+      await _database.ref('news/stocks/$symbol').set(mockNews);
+
+      return mockNews;
+    } catch (e) {
+      _logger.severe('Error fetching news for $symbol: $e');
+      return MockDataGenerator.generateNewsForStock(symbol);
+    }
+  }
+
+  // Fetch news by category directly from News API
+  Future<List<Map<String, dynamic>>> fetchNews(
+      {String category = 'business'}) async {
+    _logger.info('Fetching news for category: $category');
+    try {
+      // First check if we have cached news in SharedPreferences
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final cacheKey = 'news_cache_$category';
+      final cachedNewsData = sharedPrefs.getString(cacheKey);
+      final cacheTimestampKey = 'news_timestamp_$category';
+      final cacheTimestamp = sharedPrefs.getInt(cacheTimestampKey) ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Use cache if it's less than 30 minutes old
+      if (cachedNewsData != null && now - cacheTimestamp < 1800000) {
+        _logger.info('Using cached news data for category: $category');
+        return List<Map<String, dynamic>>.from(json.decode(cachedNewsData));
+      }
+
+      // If no valid cache, fetch from News API
+      _logger.info(
+          'Fetching fresh news data from News API for category: $category');
+
+      final params = {
+        'apiKey': Env.newsApiKey,
+        'category': category,
+        'language': 'en',
+        'pageSize': '20',
+      };
+
+      // Add Ethiopia as query to get more relevant results
+      String url = '${Env.newsApiBaseUrl}/top-headlines?q=Ethiopia&';
+      params.forEach((key, value) {
+        url += '$key=$value&';
+      });
+      url = url.substring(0, url.length - 1); // Remove trailing &
+
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // Combine gainers and losers
-        final List<dynamic> gainers = data['top_gainers'] ?? [];
-        final List<dynamic> losers = data['top_losers'] ?? [];
-        final List<dynamic> combined = [...gainers, ...losers];
+        if (data['status'] == 'ok') {
+          final articles = data['articles'] as List;
 
-        // Convert to Asset objects
-        return combined.map((item) {
-          final price =
-              double.tryParse(item['price'].toString().replaceAll('\$', '')) ??
-                  0.0;
-          final change = double.tryParse(
-                  item['change_amount'].toString().replaceAll('\$', '')) ??
-              0.0;
-          final changePercent = double.tryParse(
-                  item['change_percentage'].toString().replaceAll('%', '')) ??
-              0.0;
-          final volume =
-              double.tryParse(item['volume'].toString().replaceAll(',', '')) ??
-                  0.0;
-
-          return Asset(
-            symbol: item['ticker'] ?? '',
-            name: item['ticker'] ?? '', // API doesn't provide full name
-            price: price,
-            change: change,
-            changePercent: changePercent,
-            volume: volume,
-            marketCap: price * volume, // Approximate market cap
-            sector: 'International',
-            ownership: 'Public', // Default ownership for international stocks
-          );
-        }).toList();
-      }
-    } catch (e) {
-      _logger.warning('Error fetching from Alpha Vantage: $e');
-    }
-
-    return [];
-  }
-
-  // Fetch individual stock data from Finnhub
-  Future<Asset?> _fetchFromFinnhub(String symbol) async {
-    try {
-      // Get quote data
-      final quoteResponse = await http.get(Uri.parse(
-          '$_finnhubBaseUrl/quote?symbol=$symbol&token=$_finnhubApiKey'));
-
-      // Get company profile for additional data
-      final profileResponse = await http.get(Uri.parse(
-          '$_finnhubBaseUrl/stock/profile2?symbol=$symbol&token=$_finnhubApiKey'));
-
-      if (quoteResponse.statusCode == 200 &&
-          profileResponse.statusCode == 200) {
-        final quoteData = json.decode(quoteResponse.body);
-        final profileData = json.decode(profileResponse.body);
-
-        final currentPrice = quoteData['c'] ?? 0.0;
-        final previousClose = quoteData['pc'] ?? 0.0;
-        final change = currentPrice - previousClose;
-        final changePercent =
-            previousClose > 0 ? (change / previousClose) * 100 : 0.0;
-
-        return Asset(
-          symbol: symbol,
-          name: profileData['name'] ?? symbol,
-          price: currentPrice.toDouble(),
-          change: change.toDouble(),
-          changePercent: changePercent.toDouble(),
-          volume: (quoteData['v'] ?? 0).toDouble(),
-          marketCap: (profileData['marketCapitalization'] ?? 0).toDouble() *
-              1000000, // Convert from millions
-          sector: 'International',
-          ownership: profileData['exchange'] ?? 'Public',
-        );
-      }
-    } catch (e) {
-      _logger.warning('Error fetching $symbol from Finnhub: $e');
-    }
-
-    return null;
-  }
-
-  // Fetch news data
-  Future<List<Map<String, dynamic>>> fetchNews(
-      {String category = 'business'}) async {
-    try {
-      // For Ethiopian news, we'll use mock data since there's no free API specifically for Ethiopian financial news
-      if (category.toLowerCase() == 'ethiopian') {
-        return _getFallbackNewsData('ethiopian');
-      }
-
-      // For international news, try to get real data
-      final response = await http.get(Uri.parse(
-          'https://finnhub.io/api/v1/news?category=general&token=$_finnhubApiKey'));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> articles = json.decode(response.body);
-
-        if (articles.isNotEmpty) {
-          return articles
-              .take(10)
+          // Transform to our format
+          final newsList = articles
               .map((article) => {
-                    'title': article['headline'] ?? '',
-                    'description': article['summary'] ?? '',
-                    'url': article['url'] ?? '',
-                    'urlToImage': article['image'] ?? '',
-                    'publishedAt': article['datetime'] != null
-                        ? DateTime.fromMillisecondsSinceEpoch(
-                                article['datetime'] * 1000)
-                            .toIso8601String()
-                        : DateTime.now().toIso8601String(),
-                    'source': article['source'] ?? '',
+                    'id':
+                        'NEWS_${article['publishedAt']}_${article['source']['name']}',
+                    'headline': article['title'],
+                    'summary':
+                        article['description'] ?? 'No description available',
+                    'content': article['content'] ??
+                        article['description'] ??
+                        'No content available',
+                    'publishDate': article['publishedAt'],
+                    'source': article['source']['name'],
+                    'imageUrl': article['urlToImage'] ??
+                        'https://ethiotrading.com/default-news-image.png',
+                    'url': article['url'],
+                    'category': category,
                   })
-              .toList()
-              .cast<Map<String, dynamic>>();
+              .toList();
+
+          // Cache the results
+          await sharedPrefs.setString(cacheKey, json.encode(newsList));
+          await sharedPrefs.setInt(cacheTimestampKey, now);
+
+          // Also store in Firebase for offline access
+          try {
+            await _database.ref('news/categories/$category').set(newsList);
+          } catch (e) {
+            _logger.warning('Failed to cache news in Firebase: $e');
+          }
+
+          return List<Map<String, dynamic>>.from(newsList);
+        } else {
+          throw Exception('News API returned status: ${data['status']}');
         }
+      } else {
+        throw Exception(
+            'API request failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.warning('Error fetching news: $e');
-    }
+      _logger.severe('Error fetching news from API for category $category: $e');
 
-    // Return fallback news data
-    return _getFallbackNewsData(category);
-  }
+      // Try to get news from Firebase as backup
+      try {
+        final snapshot = await _database.ref('news/categories/$category').get();
 
-  // Fallback international market data - only used if all APIs fail
-  List<Asset> _getFallbackInternationalData() {
-    return [
-      Asset(
-        symbol: 'AAPL',
-        name: 'Apple Inc.',
-        price: 175.50,
-        change: 2.75,
-        changePercent: 1.59,
-        volume: 65000000,
-        marketCap: 2850000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'MSFT',
-        name: 'Microsoft Corporation',
-        price: 325.25,
-        change: 5.50,
-        changePercent: 1.72,
-        volume: 28000000,
-        marketCap: 2420000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'GOOGL',
-        name: 'Alphabet Inc.',
-        price: 135.75,
-        change: -1.25,
-        changePercent: -0.91,
-        volume: 18500000,
-        marketCap: 1750000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'AMZN',
-        name: 'Amazon.com Inc.',
-        price: 145.25,
-        change: 3.25,
-        changePercent: 2.29,
-        volume: 32000000,
-        marketCap: 1500000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'TSLA',
-        name: 'Tesla, Inc.',
-        price: 225.50,
-        change: -8.75,
-        changePercent: -3.74,
-        volume: 125000000,
-        marketCap: 715000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'META',
-        name: 'Meta Platforms, Inc.',
-        price: 315.25,
-        change: 7.50,
-        changePercent: 2.44,
-        volume: 22000000,
-        marketCap: 810000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'NFLX',
-        name: 'Netflix, Inc.',
-        price: 425.75,
-        change: 12.25,
-        changePercent: 2.96,
-        volume: 8500000,
-        marketCap: 188000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-      Asset(
-        symbol: 'JPM',
-        name: 'JPMorgan Chase & Co.',
-        price: 145.50,
-        change: -2.25,
-        changePercent: -1.52,
-        volume: 12000000,
-        marketCap: 425000000000,
-        sector: 'International',
-        ownership: 'Public',
-      ),
-    ];
-  }
+        if (snapshot.exists) {
+          _logger
+              .info('Using news from Firebase backup for category: $category');
+          final data = snapshot.value as List<dynamic>;
+          return data.cast<Map<String, dynamic>>();
+        }
+      } catch (fbError) {
+        _logger.warning('Failed to get news from Firebase: $fbError');
+      }
 
-  // Fallback news data
-  List<Map<String, dynamic>> _getFallbackNewsData(String category) {
-    if (category.toLowerCase() == 'ethiopian') {
-      return [
-        {
-          'title': 'Ethiopian Stock Exchange Set to Launch Next Year',
-          'description':
-              'The Ethiopian government has announced plans to launch the country\'s first stock exchange by the end of next year, marking a significant milestone in the nation\'s economic reform agenda.',
-          'url': 'https://example.com/ethiopian-stock-exchange',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-15T09:30:00Z',
-          'source': 'Ethiopian Financial Times',
-        },
-        {
-          'title': 'Commercial Bank of Ethiopia Reports Record Profits',
-          'description':
-              'The Commercial Bank of Ethiopia (CBE) has reported record annual profits, highlighting the growing strength of the country\'s banking sector despite regional challenges.',
-          'url': 'https://example.com/cbe-profits',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-10T14:15:00Z',
-          'source': 'Addis Business',
-        },
-        {
-          'title':
-              'Ethiopian Airlines Expands Fleet with New Aircraft Purchase',
-          'description':
-              'Ethiopian Airlines, Africa\'s largest airline, has announced the purchase of 10 new aircraft, expanding its fleet to meet growing demand for air travel across the continent.',
-          'url': 'https://example.com/ethiopian-airlines-expansion',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-08T11:45:00Z',
-          'source': 'African Aviation News',
-        },
-        {
-          'title': 'Ethiopia\'s Inflation Rate Drops to Single Digits',
-          'description':
-              'For the first time in three years, Ethiopia\'s inflation rate has dropped to single digits, signaling potential economic stabilization amid ongoing reforms.',
-          'url': 'https://example.com/ethiopia-inflation',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-05T08:20:00Z',
-          'source': 'East African Economic Review',
-        },
-        {
-          'title': 'Foreign Investment in Ethiopia Reaches Five-Year High',
-          'description':
-              'Foreign direct investment in Ethiopia has reached a five-year high, with significant inflows in manufacturing, agriculture, and energy sectors.',
-          'url': 'https://example.com/ethiopia-investment',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-03T16:10:00Z',
-          'source': 'Global Investment Monitor',
-        },
-      ];
-    } else {
-      return [
-        {
-          'title': 'Global Markets Rally as Inflation Concerns Ease',
-          'description':
-              'Stock markets around the world rallied today as new data suggested inflation pressures might be easing, potentially allowing central banks to slow their rate hiking cycles.',
-          'url': 'https://example.com/global-markets-rally',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-15T16:30:00Z',
-          'source': 'Financial Times',
-        },
-        {
-          'title': 'Tech Stocks Lead Market Gains Amid AI Optimism',
-          'description':
-              'Technology stocks led market gains today as investors remain optimistic about the potential of artificial intelligence to drive future growth and innovation.',
-          'url': 'https://example.com/tech-stocks-ai',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-14T14:45:00Z',
-          'source': 'Wall Street Journal',
-        },
-        {
-          'title': 'Oil Prices Fall on Demand Concerns',
-          'description':
-              'Oil prices fell today as concerns about global demand outweighed production cuts announced by major oil-producing countries.',
-          'url': 'https://example.com/oil-prices-fall',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-13T10:15:00Z',
-          'source': 'Reuters',
-        },
-        {
-          'title': 'Federal Reserve Signals Pause in Rate Hikes',
-          'description':
-              'The Federal Reserve has signaled a potential pause in its interest rate hiking cycle, citing progress in the fight against inflation and concerns about economic growth.',
-          'url': 'https://example.com/fed-rate-pause',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-12T18:20:00Z',
-          'source': 'Bloomberg',
-        },
-        {
-          'title': 'European Markets Close Higher on Strong Earnings',
-          'description':
-              'European stock markets closed higher today, boosted by strong corporate earnings reports and positive economic data from the region.',
-          'url': 'https://example.com/european-markets',
-          'urlToImage':
-              null, // Use null to show a placeholder instead of a broken image
-          'publishedAt': '2023-05-11T17:05:00Z',
-          'source': 'CNBC Europe',
-        },
-      ];
+      // If all else fails, return empty list
+      return [];
     }
   }
 }

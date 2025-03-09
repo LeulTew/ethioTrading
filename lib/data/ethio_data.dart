@@ -401,13 +401,15 @@ class EthioData {
     return months[month - 1];
   }
 
-  // Amharic Translation Map
+  // Amharic Translation Map with additional translations
   static Map<String, String> getAmharicTranslations() {
     return {
+      // Basic navigation and common terms
       'market': 'ገበያ',
-      'portfolio': 'ポートフォリオ',
+      'portfolio': 'ፖርትፎሊዮ',
       'profile': 'መገለጫ',
       'settings': 'ቅንብሮች',
+      'home': 'መነሻ',
       'buy': 'ግዛ',
       'sell': 'ሽጥ',
       'price': 'ዋጋ',
@@ -417,12 +419,85 @@ class EthioData {
       'news': 'ዜና',
       'watchlist': 'ዝርዝር',
       'analysis': 'ጥናት',
+
+      // Sectors
       'bank': 'ባንክ',
       'agriculture': 'እርሻ',
       'manufacturing': 'ማምረቻ',
+      'transport': 'ትራንስፖርት',
+      'telecom': 'ቴሌኮም',
+      'utility': 'አገልግሎት',
+      'technology': 'ቴክኖሎጂ',
+      'automotive': 'አውቶሞቲቭ',
+      'financial': 'የፋይናንስ',
+      'healthcare': 'ጤና',
+      'consumer_cyclical': 'የሸማቾች',
+      'e-commerce': 'ኢ-ኮሜርስ',
+      'all_sectors': 'ሁሉም ዘርፎች',
+
+      // Ownership types
       'state': 'መንግስታዊ',
       'private': 'የግል',
+
+      // Market UI elements
+      'market_summary': 'የገበያ ማጠቃለያ',
+      'gainers': 'አሸናፊዎች',
+      'losers': 'ተሸናፊዎች',
+      'search_markets': 'ገበያዎችን ይፈልጉ',
+      'search_stocks': 'አክሲዮኖችን ይፈልጉ',
+      'all': 'ሁሉም',
+      'ethiopian': 'ኢትዮጵያዊ',
+      'international': 'ዓለም አቀፍ',
+      'market_open': 'ገበያ ክፍት ነው',
+      'market_closed': 'ገበያ ተዘግቷል',
+      'add_to_watchlist': 'ወደ ዝርዝር ያክሉ',
+      'remove_from_favorites': 'ከዝርዝር ያስወግዱ',
+      'notifications': 'ማሳወቂያዎች',
+      'clear_all': 'ሁሉንም አጽዳ',
+      'advanced_filters': 'የላቀ ማጣሪያ',
+      'refresh_data': 'መረጃን አድስ',
+      'market_settings': 'የገበያ ቅንብሮች',
+
+      // Time ranges
+      '1d': '1ቀ',
+      '1w': '1ሳ',
+      '1m': '1ወ',
+      '3m': '3ወ',
+      '1y': '1ዓ',
+      'All': 'ሁሉም',
+
+      // Market status
+      'opens_at': 'ይከፈታል በ',
+      'closes_at': 'ይዘጋል በ',
+      'closed_until': 'ዝግ እስከ',
+      'trading_hours': 'የንግድ ሰዓታት',
     };
+  }
+
+  // Get shorter market status for mobile screens
+  static String getShortMarketStatus() {
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    // Ethiopian markets are typically 9:00 AM to 3:00 PM, Monday to Friday
+    if (now.weekday < DateTime.monday || now.weekday > DateTime.friday) {
+      return "ዝግ እስከ ሰኞ 9:00";
+    }
+
+    if (hour < 9) {
+      // Before market opens
+      return "9:00 ላይ ይከፈታል";
+    } else if (hour >= 15) {
+      // After market closes
+      if (now.weekday == DateTime.friday) {
+        return "ዝግ እስከ ሰኞ 9:00";
+      } else {
+        return "ዝግ እስከ 9:00";
+      }
+    } else {
+      // Market is open
+      return "ይዘጋል 15:00";
+    }
   }
 
   // Market Statistics
@@ -573,5 +648,66 @@ class EthioData {
   static void addNotification(Map<String, dynamic> notification) {
     // Broadcast notification to all subscribers
     _marketDataController.add(_lastMarketData);
+  }
+}
+
+// Ethiopian Market Hours utility class
+class EthiopianMarketHours {
+  static bool isMarketOpen() {
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    // Ethiopian markets are typically 9:00 AM to 3:00 PM, Monday to Friday
+    return now.weekday >= DateTime.monday &&
+        now.weekday <= DateTime.friday &&
+        hour >= 9 &&
+        hour < 15;
+  }
+
+  static String getFullMarketStatus() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    final minute = now.minute;
+
+    if (now.weekday < DateTime.monday || now.weekday > DateTime.friday) {
+      return "Market closed until Monday 9:00 AM";
+    }
+
+    if (hour < 9) {
+      final remainingHours = 9 - hour - 1;
+      final remainingMinutes = 60 - minute;
+      return "Market opens in $remainingHours:${remainingMinutes.toString().padLeft(2, '0')} at 9:00 AM";
+    } else if (hour >= 15) {
+      if (now.weekday == DateTime.friday) {
+        return "Market closed until Monday 9:00 AM";
+      } else {
+        return "Market closed until tomorrow 9:00 AM";
+      }
+    } else {
+      final remainingHours = 14 - hour;
+      final remainingMinutes = 60 - minute;
+      return "Market closes in $remainingHours:${remainingMinutes.toString().padLeft(2, '0')} at 3:00 PM";
+    }
+  }
+
+  static String getShortMarketStatus() {
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    if (now.weekday < DateTime.monday || now.weekday > DateTime.friday) {
+      return "Mon 9AM";
+    }
+
+    if (hour < 9) {
+      return "9AM";
+    } else if (hour >= 15) {
+      if (now.weekday == DateTime.friday) {
+        return "Mon 9AM";
+      } else {
+        return "9AM";
+      }
+    } else {
+      return "3PM";
+    }
   }
 }

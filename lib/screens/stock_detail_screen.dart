@@ -805,19 +805,20 @@ class _StockDetailScreenState extends State<StockDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
+                color: theme.colorScheme.surfaceContainerHighest,
               ),
               child: Text(
-                lang.translate(widget.asset.sector.toLowerCase()),
+                widget.asset.sector,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
-                  color: theme.colorScheme.primary,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
           ],
         ),
+        // Keep back button for detail screen as it's not a main navigation screen
         actions: [
           IconButton(
             icon: Icon(

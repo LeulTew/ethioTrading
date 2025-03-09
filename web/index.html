@@ -5,20 +5,20 @@
 
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
-    <meta name="description" content="An Ethiopian trading application." />
+    <meta name="description" content="Ethiopian Trading App" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- iOS meta tags & icons -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <meta name="apple-mobile-web-app-title" content="ethio_trading" />
+    <meta name="apple-mobile-web-app-title" content="ethioTrading" />
     <link rel="apple-touch-icon" href="icons/Icon-192.png" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="favicon.png" />
 
-    <title>Ethio Trading</title>
+    <title>ethioTrading</title>
     <link rel="manifest" href="manifest.json" />
 
     <script>
@@ -28,97 +28,75 @@
 
     <!-- This script adds the flutter initialization JS code -->
     <script src="flutter.js" defer></script>
+
+    <!-- Add connectivity check before loading Firebase -->
+    <script>
+      window.addEventListener("online", () => {
+        console.log("Connection restored");
+        window.dispatchEvent(
+          new CustomEvent("connectivityChanged", { detail: { online: true } })
+        );
+      });
+      window.addEventListener("offline", () => {
+        console.log("Connection lost");
+        window.dispatchEvent(
+          new CustomEvent("connectivityChanged", { detail: { online: false } })
+        );
+      });
+    </script>
   </head>
   <body>
     <div id="loading">
       <style>
+        /* Loading indicator styles */
         body {
-          background-color: #ffffff;
+          background-color: #121212;
           margin: 0;
+          padding: 0;
         }
         #loading {
-          position: fixed;
-          width: 100%;
-          height: 100%;
           display: flex;
+          align-items: center;
           justify-content: center;
-          align-items: center;
-          font-family: Arial, sans-serif;
-          font-size: 16px;
+          height: 100vh;
         }
-        .loading-indicator {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid #3498db;
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 5px solid rgba(255, 255, 255, 0.3);
           border-radius: 50%;
-          margin-bottom: 10px;
-          animation: spin 1s linear infinite;
+          border-top-color: #6a11cb;
+          animation: spin 1s ease-in-out infinite;
         }
         @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
+          to {
             transform: rotate(360deg);
           }
         }
       </style>
-      <div class="loading-indicator">
-        <div class="loading-spinner"></div>
-        <p>Loading...</p>
-      </div>
+      <div class="spinner"></div>
     </div>
 
     <script>
-      // Force HTML renderer for all browsers to avoid compatibility issues
-      window.flutterWebRenderer = "html";
+      window.addEventListener("load", function () {
+        // Download main.dart.js
+        _flutter.loader.loadEntrypoint({
+          serviceWorker: {
+            serviceWorkerVersion: serviceWorkerVersion,
+          },
+          onEntrypointLoaded: async function (engineInitializer) {
+            // Initialize the Flutter engine
+            const appRunner = await engineInitializer.initializeEngine({
+              // Use modern renderer with CanvasKit for better performance
+              renderer: "canvaskit",
+            });
 
-      // The value below is injected by flutter build, do not touch.
-      var serviceWorkerVersion = null;
+            // Hide loading indicator
+            document.querySelector("#loading")?.remove();
 
-      // Proper initialization method recommended by Flutter
-      window.addEventListener("load", async function () {
-        var loading = document.getElementById("loading");
-
-        // Initialize Flutter's engine using proper method
-        _flutter = {};
-        _flutter.loader = _flutter.loader || {};
-        _flutter.loader.loadEntrypoint = function (options) {
-          return Promise.resolve().then(function () {
-            return loadMainDartJs();
-          });
-        };
-
-        function loadMainDartJs() {
-          return new Promise(function (resolve, reject) {
-            var scriptTag = document.createElement("script");
-            scriptTag.src = "main.dart.js";
-            scriptTag.type = "application/javascript";
-            scriptTag.onload = resolve;
-            scriptTag.onerror = function (error) {
-              console.error("Failed to load main.dart.js", error);
-              reject(error);
-            };
-            document.body.appendChild(scriptTag);
-          });
-        }
-
-        try {
-          await _flutter.loader.loadEntrypoint({});
-        } catch (e) {
-          console.error("Failed to load Flutter app", e);
-          loading.innerHTML = "Error loading application: " + e;
-        }
-
-        // Listen for first render
-        window.addEventListener("flutter-first-frame", function () {
-          loading.remove();
+            // Run the app
+            await appRunner.runApp();
+          },
         });
       });
     </script>

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 
 /// Cross-browser compatible web utilities
 class WebUtils {
@@ -10,7 +10,12 @@ class WebUtils {
   /// Initialize web-specific functionality with cross-browser support
   static void initPlatformSpecific() {
     if (!kIsWeb) return;
-    // All web initialization is now handled in index.html
+
+    // URL strategy is now configured in main.dart directly
+    // This avoids the need to import flutter_web_plugins here
+    if (kDebugMode) {
+      print('Web platform initialized');
+    }
   }
 
   /// Initialize web-platform for Firebase

@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
-import '../data/ethio_data.dart';
-import '../utils/ethiopian_utils.dart';
+import '../data/ethio_data.dart' as ethio_data;
 import '../providers/language_provider.dart';
 import '../providers/market_provider.dart';
 import '../models/asset.dart';
 import 'stock_detail_screen.dart';
 import '../theme/app_theme.dart';
-import '../widgets/news_feed_widget.dart';
+// Import other screens for navigation
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -28,6 +27,7 @@ class _MarketScreenState extends State<MarketScreen>
   int _selectedTimeRange = 1; // 0: 1D, 1: 1W, 2: 1M, 3: 3M, 4: 1Y, 5: ALL
   int _currentTabIndex =
       0; // 0: All, 1: Ethiopian, 2: International, 3: Favorites
+  // Remove unused _currentNavIndex field
 
   @override
   void initState() {
@@ -57,7 +57,9 @@ class _MarketScreenState extends State<MarketScreen>
     setState(() => _isLoading = true);
 
     try {
-      await marketProvider.fetchMarketData();
+      // Explicitly use both ethio_data and mock_data for Ethiopian markets
+      await marketProvider.fetchMarketData(
+          useEthioData: true, useMockData: true);
     } catch (e) {
       // Handle error
       debugPrint('Error fetching market data: $e');
@@ -160,7 +162,7 @@ class _MarketScreenState extends State<MarketScreen>
         children: [
           _buildFilterChip('All', lang.translate('all_sectors')),
           const SizedBox(width: 8),
-          ...EthioData.getSectors().map((sector) => Padding(
+          ...ethio_data.EthioData.getSectors().map((sector) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: _buildFilterChip(
                     sector, lang.translate(sector.toLowerCase())),
@@ -223,7 +225,7 @@ class _MarketScreenState extends State<MarketScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGradient.last.withValues(alpha:0.4),
+            color: AppTheme.primaryGradient.last.withAlpha(76),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -255,14 +257,14 @@ class _MarketScreenState extends State<MarketScreen>
                 label: lang.translate('gainers'),
                 value: '${summary['gainers']}',
                 valueColor: AppTheme.bullish,
-                bgColor: Colors.white.withValues(alpha:0.15),
+                bgColor: Colors.white.withAlpha(38),
               ),
               _buildSummaryItem(
                 icon: Icons.arrow_downward,
                 label: lang.translate('losers'),
                 value: '${summary['losers']}',
                 valueColor: AppTheme.bearish,
-                bgColor: Colors.white.withValues(alpha:0.15),
+                bgColor: Colors.white.withAlpha(38),
               ),
               _buildSummaryItem(
                 icon: Icons.show_chart,
@@ -270,7 +272,7 @@ class _MarketScreenState extends State<MarketScreen>
                 value:
                     '${(summary['totalVolume'] / 1000000).toStringAsFixed(1)}M',
                 valueColor: Colors.white,
-                bgColor: Colors.white.withValues(alpha:0.15),
+                bgColor: Colors.white.withAlpha(38),
               ),
             ],
           ),
@@ -443,8 +445,7 @@ class _MarketScreenState extends State<MarketScreen>
                               Icon(
                                 Icons.search_off,
                                 size: 48,
-                                color:
-                                    theme.colorScheme.primary.withValues(alpha:0.5),
+                                color: theme.colorScheme.primary.withAlpha(128),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -456,7 +457,7 @@ class _MarketScreenState extends State<MarketScreen>
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   color: theme.colorScheme.onSurface
-                                      .withValues(alpha:0.7),
+                                      .withAlpha(179),
                                 ),
                               ),
                               if (_currentTabIndex == 3 &&
@@ -469,7 +470,7 @@ class _MarketScreenState extends State<MarketScreen>
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 14,
                                       color: theme.colorScheme.onSurface
-                                          .withValues(alpha:0.5),
+                                          .withAlpha(128),
                                     ),
                                   ),
                                 ),
@@ -488,51 +489,38 @@ class _MarketScreenState extends State<MarketScreen>
                           ),
                         ),
             ),
-            // News section for this market
-            if (_currentTabIndex != 3) // Don't show news in favorites tab
-              Container(
-                height: 300,
-                padding: const EdgeInsets.all(8.0),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _currentTabIndex == 1
-                                  ? lang.translate('ethiopian_news')
-                                  : lang.translate('market_news'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: NewsFeedWidget(
-                          category: _currentTabIndex == 1
-                              ? 'ethiopian'
-                              : 'international',
-                          itemCount: 3,
-                          maxHeight: 250,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
+      ),
+      // Replace the custom BottomAppBar with BottomNavigationBar to match other screens
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1, // Market is selected
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: lang.translate('home'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.show_chart),
+            label: lang.translate('market'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.account_balance_wallet),
+            label: lang.translate('portfolio'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: lang.translate('profile'),
+          ),
+        ],
+        onTap: (index) {
+          if (index != 1) {
+            // Navigate to the appropriate screen
+            final routes = ['/home', '/market', '/portfolio', '/profile'];
+            Navigator.pushReplacementNamed(context, routes[index]);
+          }
+        },
       ),
     );
   }
@@ -544,7 +532,7 @@ class _MarketScreenState extends State<MarketScreen>
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outline.withValues(alpha:0.2)),
+        border: Border.all(color: theme.colorScheme.outline.withAlpha(51)),
       ),
       child: TabBar(
         controller: _tabController,
@@ -718,7 +706,7 @@ class _MarketScreenState extends State<MarketScreen>
 
   Widget _buildMarketStatusBanner(ThemeData theme, LanguageProvider lang) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -741,9 +729,10 @@ class _MarketScreenState extends State<MarketScreen>
       ),
       child: Row(
         children: [
+          // Status indicator dot
           Container(
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white,
@@ -756,31 +745,38 @@ class _MarketScreenState extends State<MarketScreen>
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
+
+          // Market status text (Open/Closed)
           Text(
             _isMarketOpen
                 ? lang.translate('market_open')
                 : lang.translate('market_closed'),
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
           const Spacer(),
+
+          // Time status with fixed width to prevent overflow
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withAlpha(51),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              EthiopianMarketHours.getMarketStatus(),
+              // Use shorter text format to avoid overflow
+              ethio_data.EthiopianMarketHours.getShortMarketStatus(),
               style: GoogleFonts.spaceGrotesk(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -814,7 +810,7 @@ class _MarketScreenState extends State<MarketScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      theme.colorScheme.primary.withValues(alpha:0.7),
+                      theme.colorScheme.primary.withAlpha(179),
                       theme.colorScheme.primary,
                     ],
                     begin: Alignment.topLeft,
@@ -909,7 +905,7 @@ class _MarketScreenState extends State<MarketScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: changeColor.withValues(alpha:0.15),
+                      color: changeColor.withAlpha(38),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

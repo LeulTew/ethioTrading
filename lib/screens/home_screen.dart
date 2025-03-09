@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'dart:ui';
-import '../data/ethio_data.dart';
+import '../data/ethio_data.dart' as ethio_data;
 import '../utils/ethiopian_utils.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _marketData = EthioData.generateMockEthioMarketData();
+    _marketData = ethio_data.EthioData.generateMockEthioMarketData();
     _isMarketOpen = EthiopianMarketHours.isMarketOpen();
 
     // Setup animations
@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _refreshMarketData() async {
     setState(() {
-      _marketData = EthioData.generateMockEthioMarketData();
+      _marketData = ethio_data.EthioData.generateMockEthioMarketData();
       _isMarketOpen = EthiopianMarketHours.isMarketOpen();
     });
   }
@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMarketOverview(ThemeData theme, LanguageProvider lang) {
     final marketIndex = _calculateMarketIndex();
     final isPositive = marketIndex['change'] > 0;
-    final marketStats = EthioData.getMarketStatistics(_marketData);
+    final marketStats = ethio_data.EthioData.getMarketStatistics(_marketData);
 
     return FadeInDown(
       duration: const Duration(milliseconds: 600),
@@ -821,8 +821,15 @@ class _HomeScreenState extends State<HomeScreen>
       child: Scaffold(
         appBar: AppBar(
           title: Text(languageProvider.translate('home')),
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: false, // Ensure no back button
           actions: [
+            IconButton(
+              icon: const Icon(Icons.newspaper),
+              tooltip: languageProvider.translate('news'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/news');
+              },
+            ),
             IconButton(
               icon: Stack(
                 children: [

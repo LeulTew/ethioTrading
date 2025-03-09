@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +13,7 @@ import 'screens/profile_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'screens/news_screen.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
@@ -47,8 +49,12 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
 
   // Create services
-  final apiService = ApiService();
   final firebaseDatabase = FirebaseDatabase.instance;
+  final firebaseAuth = FirebaseAuth.instance;
+  final apiService = ApiService(
+    database: firebaseDatabase,
+    auth: firebaseAuth,
+  );
 
   // Create ThemeProvider instance to pass to both providers and MaterialApp
   final themeProvider = ThemeProvider();
@@ -116,6 +122,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => ProfileScreen(
               onThemeChanged: themeProvider.setThemeMode,
             ),
+        '/news': (context) => const NewsScreen(), // Add the news screen route
       },
       // Fallback for unknown routes
       onUnknownRoute: (settings) => MaterialPageRoute(

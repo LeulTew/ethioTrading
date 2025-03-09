@@ -1,26 +1,36 @@
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 
 class EthiopianCurrencyFormatter {
-  static final NumberFormat _formatter = NumberFormat.currency(
-    locale: 'am_ET',
-    symbol: 'ETB',
-    decimalDigits: 2,
-  );
-
-  static final NumberFormat _volumeFormatter =
-      NumberFormat.compact(locale: 'en');
-
   static String format(double amount) {
-    return _formatter.format(amount);
+    final formatter = NumberFormat.currency(
+      locale: 'en_US',
+      symbol: 'ETB ',
+      decimalDigits: 2,
+    );
+    return formatter.format(amount);
   }
 
-  static String formatVolume(num volume) {
-    return _volumeFormatter.format(volume);
+  // Add the missing formatCompact method
+  static String formatCompact(double amount) {
+    final formatter = NumberFormat.compactCurrency(
+      locale: 'en_US',
+      symbol: 'ETB ',
+      decimalDigits: 1,
+    );
+    return formatter.format(amount);
   }
 
-  static double parse(String amount) {
-    return _formatter.parse(amount).toDouble();
+  // Format for volume display
+  static String formatVolume(double volume) {
+    if (volume >= 1000000) {
+      return '${(volume / 1000000).toStringAsFixed(2)}M';
+    } else if (volume >= 1000) {
+      return '${(volume / 1000).toStringAsFixed(2)}K';
+    } else {
+      return volume.toStringAsFixed(0);
+    }
   }
 }
 
@@ -93,27 +103,20 @@ class EthiopianCalendar {
 }
 
 class EthiopianMarketHours {
-  // Ethiopian market hours are from 9:00 AM to 3:00 PM EAT (UTC+3)
   static const int marketOpenHour = 9;
   static const int marketCloseHour = 15;
 
-  // List of fixed Ethiopian holidays (month and day in Gregorian calendar)
   static const Map<int, List<int>> _fixedHolidays = {
-    1: [
-      7,
-      19
-    ], // Genna (Ethiopian Christmas) - Jan 7, Timkat (Epiphany) - Jan 19
-    3: [2], // Adwa Victory Day - March 2
-    5: [1, 28], // Labor Day - May 1, Derg Downfall Day - May 28
-    9: [11, 27], // Ethiopian New Year (Enkutatash) - Sept 11, Meskel - Sept 27
+    1: [7, 19],
+    3: [2],
+    5: [1, 28],
+    9: [11, 27],
   };
 
-  // List of variable Ethiopian holidays (calculated based on Ethiopian and Islamic calendars)
   static bool _isVariableHoliday(DateTime date) {
     final ethiopianDate = EthiopianCalendar.getCurrentDate();
     final hijriDate = EthiopianCalendar.gregorianToHijri(date);
 
-    // Fasika (Ethiopian Easter) - Calculate based on Ethiopian calendar
     if (ethiopianDate['month'] == 8) {
       if (ethiopianDate['day'] >= 14 && ethiopianDate['day'] <= 16) {
         return true;
@@ -123,17 +126,14 @@ class EthiopianMarketHours {
     final hijriMonth = hijriDate['month'] ?? 0;
     final hijriDay = hijriDate['day'] ?? 0;
 
-    // Eid Al-Fitr (1st Shawwal)
     if (hijriMonth == 10 && hijriDay <= 3) {
       return true;
     }
 
-    // Eid Al-Adha (10th Dhul Hijjah)
     if (hijriMonth == 12 && hijriDay >= 10 && hijriDay <= 12) {
       return true;
     }
 
-    // Prophet Muhammad's Birthday (12th Rabi' al-Awwal)
     if (hijriMonth == 3 && hijriDay == 12) {
       return true;
     }
@@ -142,40 +142,33 @@ class EthiopianMarketHours {
   }
 
   static bool isHoliday(DateTime date) {
-    // Check fixed holidays
     final fixedHolidayDays = _fixedHolidays[date.month];
     if (fixedHolidayDays != null && fixedHolidayDays.contains(date.day)) {
       return true;
     }
 
-    // Check variable holidays
     return _isVariableHoliday(date);
   }
 
-  // Market is closed on weekends and Ethiopian holidays
   static bool isMarketOpen() {
     final now = DateTime.now().toLocal();
     final hour = now.hour;
     final minute = now.minute;
 
-    // Check if it's weekend
     if (now.weekday == DateTime.saturday || now.weekday == DateTime.sunday) {
       return false;
     }
 
-    // Check if it's a holiday
     if (isHoliday(now)) {
       return false;
     }
 
-    // Check if within trading hours
     if (hour < marketOpenHour || hour >= marketCloseHour) {
       return false;
     }
 
-    // Special case for market closing time
     if (hour == marketCloseHour - 1 && minute >= 30) {
-      return false; // Market closes at 14:30
+      return false;
     }
 
     return true;
@@ -205,6 +198,26 @@ class EthiopianMarketHours {
     }
 
     return 'Market Open - Closes at 2:30 PM';
+  }
+
+  // Add this method to provide a shortened market status format
+  static String getShortMarketStatus() {
+    final now = DateTime.now();
+    final isWeekend =
+        now.weekday == DateTime.saturday || now.weekday == DateTime.sunday;
+    final hour = now.hour;
+
+    if (isWeekend) {
+      return "Closed • Weekend";
+    }
+
+    if (hour < 9) {
+      return "Opens at 9:00 AM";
+    } else if (hour >= 9 && hour < 15) {
+      return "Open • Closes at 3:00 PM";
+    } else {
+      return "Closed • Opens tomorrow 9:00 AM";
+    }
   }
 
   static DateTime _getNextTradingDay() {
@@ -246,10 +259,7 @@ class EthiopianMarketHours {
 }
 
 class TradingValidator {
-  // Maximum daily price movement allowed (10% in Ethiopian market)
   static const double maxDailyPriceChange = 0.10;
-
-  // Minimum trade amount in ETB
   static const double minTradeAmount = 100.0;
 
   static bool isValidPrice(double currentPrice, double basePrice) {
@@ -262,9 +272,8 @@ class TradingValidator {
   }
 
   static double calculateCommission(double tradeAmount) {
-    // Ethiopian market commission structure
-    const double baseCommission = 0.0027; // 0.27%
-    const double minCommission = 50.0; // Minimum 50 ETB
+    const double baseCommission = 0.0027;
+    const double minCommission = 50.0;
 
     final commission = tradeAmount * baseCommission;
     return commission < minCommission ? minCommission : commission;
@@ -275,9 +284,7 @@ class TradingValidator {
     bool isBuy = true,
   }) {
     final commission = calculateCommission(amount);
-    // VAT on commission (15%)
     final vat = commission * 0.15;
-    // Capital gains tax (15% on sell transactions)
     final capitalGainsTax = isBuy ? 0.0 : amount * 0.15;
 
     return {
@@ -326,7 +333,6 @@ class MarketStatistics {
         unchanged++;
       }
 
-      // Market cap weighted index calculation
       weightedIndexValue += value;
       previousIndexValue += value / (1 + change / 100);
     }
@@ -354,13 +360,34 @@ class EthiopianUtils {
     if (difference.inSeconds < 60) {
       return lang.translate('just_now');
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}${lang.translate('minutes_ago')}';
+      // Fix: The translate method expects only one parameter - use the correct parameter format
+      return lang
+          .translate('min_ago_param')
+          .replaceAll('{minutes}', difference.inMinutes.toString());
     } else if (difference.inHours < 24) {
-      return '${difference.inHours}${lang.translate('hours_ago')}';
+      return lang
+          .translate('hours_ago_param')
+          .replaceAll('{hours}', difference.inHours.toString());
     } else if (difference.inDays < 7) {
-      return '${difference.inDays}${lang.translate('days_ago')}';
+      return lang
+          .translate('days_ago_param')
+          .replaceAll('{days}', difference.inDays.toString());
     } else {
-      return DateFormat('MMM d, y').format(dateTime);
+      final formatter = DateFormat('MMM d, y');
+      return formatter.format(dateTime);
     }
+  }
+}
+
+// Extension for color opacity with properly converted types
+extension ColorExt on Color {
+  Color withValues({double? red, double? green, double? blue, double? alpha}) {
+    return Color.fromRGBO(
+      // Fix: Convert to int by using toInt() instead of relying on implicit conversion
+      red != null ? (red * 255).toInt() : r.toInt(),
+      green != null ? (green * 255).toInt() : g.toInt(),
+      blue != null ? (blue * 255).toInt() : b.toInt(),
+      alpha ?? a,
+    );
   }
 }

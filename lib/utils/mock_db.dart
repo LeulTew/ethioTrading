@@ -201,20 +201,19 @@ class MockNewsService {
         description:
             'The Ethiopian Stock Exchange announces new digital trading platform to modernize trading operations and increase accessibility.',
         url: 'https://example.com/news/1',
-        imageUrl: 'https://example.com/images/trading_platform.jpg',
+        imageUrl:
+            'https://picsum.photos/400/200?random=1', // Using picsum for placeholder images
         source: 'Ethiopian Business Review',
         publishedAt: DateTime.now().subtract(const Duration(hours: 2)),
-        categories: ['Market', 'Technology'],
       ),
       NewsArticle(
         title: 'National Bank of Ethiopia Introduces New Monetary Policy',
         description:
             'The National Bank of Ethiopia has announced new monetary policy aimed at stabilizing inflation and supporting economic growth.',
         url: 'https://example.com/news/2',
-        imageUrl: 'https://example.com/images/national_bank.jpg',
+        imageUrl: 'https://picsum.photos/400/200?random=2',
         source: 'Addis Fortune',
         publishedAt: DateTime.now().subtract(const Duration(hours: 8)),
-        categories: ['Economy', 'Policy'],
       ),
       NewsArticle(
         title: 'Local Investment Firm Reports Record Growth',
@@ -224,7 +223,6 @@ class MockNewsService {
         imageUrl: 'https://example.com/images/investment.jpg',
         source: 'New Business Ethiopia',
         publishedAt: DateTime.now().subtract(const Duration(days: 1)),
-        categories: ['Finance', 'Investment'],
       ),
       NewsArticle(
         title: 'Ethiopia\'s Coffee Exports Reach All-Time High',
@@ -234,7 +232,6 @@ class MockNewsService {
         imageUrl: 'https://example.com/images/coffee.jpg',
         source: 'Ethiopian Business Review',
         publishedAt: DateTime.now().subtract(const Duration(days: 2)),
-        categories: ['Commodities', 'Economy'],
       ),
       NewsArticle(
         title: 'New Regulations for Foreign Investment in Ethiopian Markets',
@@ -244,7 +241,6 @@ class MockNewsService {
         imageUrl: 'https://example.com/images/regulations.jpg',
         source: 'Addis Fortune',
         publishedAt: DateTime.now().subtract(const Duration(days: 3)),
-        categories: ['Regulation', 'Market'],
       ),
     ]);
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/asset.dart';
+import '../theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MarketListWidget extends StatelessWidget {
   final List<Asset> assets;
@@ -25,6 +27,9 @@ class MarketListWidget extends StatelessWidget {
         showFullList ? assets : assets.take(maxItems).toList();
 
     return ListView.builder(
+      shrinkWrap: true, // Added to prevent overflow in nested scrolling context
+      physics:
+          const NeverScrollableScrollPhysics(), // Let parent handle scrolling
       itemCount: displayAssets.length,
       itemBuilder: (context, index) {
         final asset = displayAssets[index];
@@ -36,6 +41,8 @@ class MarketListWidget extends StatelessWidget {
   Widget _buildAssetCard(BuildContext context, Asset asset) {
     final theme = Theme.of(context);
     final isFavorite = favoriteAssets.contains(asset.symbol);
+    final isPositive = asset.change >= 0;
+    final changeColor = isPositive ? AppTheme.bullish : AppTheme.bearish;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -65,14 +72,18 @@ class MarketListWidget extends StatelessWidget {
                   children: [
                     Text(
                       asset.symbol,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: GoogleFonts.spaceGrotesk(
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       asset.name,
-                      style: theme.textTheme.bodyMedium,
+                      style: TextStyle(
+                        color: theme.textTheme.bodySmall?.color,
+                        fontSize: 12,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -85,8 +96,10 @@ class MarketListWidget extends StatelessWidget {
                 flex: 2,
                 child: Text(
                   asset.formattedPrice,
-                  style: theme.textTheme.titleMedium,
                   textAlign: TextAlign.right,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
 
@@ -96,32 +109,30 @@ class MarketListWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      asset.formattedChange,
-                      style: TextStyle(
-                        color: asset.isUp ? Colors.green : Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                        horizontal: 8,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: asset.isUp
-                            ? Colors.green.withAlpha(51) // 0.2 * 255 = 51
-                            : Colors.red.withAlpha(51), // 0.2 * 255 = 51
-                        borderRadius: BorderRadius.circular(4),
+                        color: changeColor.withValues(alpha:0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         asset.formattedChangePercent,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: asset.isUp ? Colors.green : Colors.red,
+                          color: changeColor,
                           fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      asset.formattedChange,
+                      style: TextStyle(
+                        color: changeColor,
+                        fontSize: 12,
                       ),
                     ),
                   ],

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -45,19 +46,76 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signIn(String email, String password) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
     try {
-      await _authService.signInWithEmailAndPassword(email, password);
-      await _loadUserData();
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      // Don't do connectivity check on web platforms - rely on Firebase's handling
+      if (!kIsWeb && !await _isNetworkAvailable()) {
+        throw Exception(
+            'No internet connection. Please check your network and try again.');
+      }
+
+      final userCredential =
+          await _authService.signInWithEmailAndPassword(email, password);
+
+      if (userCredential.user != null) {
+        await _loadUserData();
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        case 'network-request-failed':
+          errorMessage =
+              'Network error. Please check your connection and try again.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many sign-in attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Authentication failed: ${e.message}';
+      }
+
+      throw Exception(errorMessage);
     } catch (e) {
-      _error = _getTranslatedError(e);
-      throw Exception(_error);
+      if (e.toString().contains('Exception: No internet connection')) {
+        throw Exception(
+            'No internet connection. Please check your network and try again.');
+      } else {
+        throw Exception('Authentication failed: ${e.toString()}');
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Use a platform-specific approach to check network connectivity
+  Future<bool> _isNetworkAvailable() async {
+    try {
+      // For web, we can use Firebase's built-in offline detection
+      // For mobile, use a simpler approach that doesn't hit CORS issues
+      if (kIsWeb) {
+        return true; // Let Firebase handle offline detection on web
+      } else {
+        // Use a URL that's likely to be accessible and fast
+        final response = await http
+            .get(
+              Uri.parse('https://firebase.google.com/generate_204'),
+            )
+            .timeout(const Duration(seconds: 5));
+        return response.statusCode == 204;
+      }
+    } catch (_) {
+      return false;
     }
   }
 

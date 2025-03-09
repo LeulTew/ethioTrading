@@ -71,6 +71,7 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (!context.mounted) return;
+      // Navigate to the home screen after successful login
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (!context.mounted) return;

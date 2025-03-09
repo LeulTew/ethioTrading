@@ -684,6 +684,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(lang.translate('profile')),
+        automaticallyImplyLeading: false, // Prevent back button
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -703,6 +704,35 @@ class _ProfileScreenState extends State<ProfileScreen>
           _buildTradingLimitsTab(),
           _buildSecurityTab(),
         ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 3, // Profile is selected
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: lang.translate('home'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.show_chart),
+            label: lang.translate('market'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.account_balance_wallet),
+            label: lang.translate('portfolio'),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: lang.translate('profile'),
+          ),
+        ],
+        onTap: (index) {
+          if (index != 3) {
+            // Navigate to the appropriate screen
+            final routes = ['/home', '/market', '/portfolio', '/profile'];
+            Navigator.pushReplacementNamed(context, routes[index]);
+          }
+        },
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/news_article.dart';
 import '../services/news_service.dart';
 import '../services/api_service.dart';
@@ -7,19 +7,22 @@ class NewsProvider with ChangeNotifier {
   final NewsService _newsService = NewsService();
   final ApiService _apiService;
 
-  List<NewsArticle> _allNews = [];
-  List<NewsArticle> _featuredNews = [];
-  List<NewsArticle> _marketNews = [];
-  List<NewsArticle> _economyNews = [];
+  // Make collections final but maintain their mutability
+  final List<NewsArticle> _articles = [];
+  final List<NewsArticle> _allNews = [];
+  final List<NewsArticle> _featuredNews = [];
+  final List<NewsArticle> _marketNews = [];
+  final List<NewsArticle> _economyNews = [];
+  final Map<String, List<Map<String, dynamic>>> _newsByCategory = {};
+  final DateTime _lastFetched = DateTime(1900);
+
   bool _isLoading = false;
   String? _error;
-  DateTime _lastFetched = DateTime(1900);
-
-  final Map<String, List<Map<String, dynamic>>> _newsByCategory = {};
 
   NewsProvider({required ApiService apiService}) : _apiService = apiService;
 
   // Getters
+  List<NewsArticle> get articles => _articles;
   List<NewsArticle> get allNews => _allNews;
   List<NewsArticle> get featuredNews => _featuredNews;
   List<NewsArticle> get marketNews => _marketNews;
@@ -65,57 +68,25 @@ class NewsProvider with ChangeNotifier {
   }
 
   // Fetch news from service
-  Future<void> fetchNews() async {
+  Future<void> fetchNews({String? category}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      // Fetch all news
-      final news = await _newsService.fetchAndCacheNews();
-
-      // Update state
-      _allNews = news;
-      _lastFetched = DateTime.now();
-
-      // Extract featured news (first 5)
-      _featuredNews = news.take(5).toList();
-
-      // Categorize news
-      _categorizeNews();
-
-      _isLoading = false;
-      notifyListeners();
+      if (category != null) {
+        _articles.clear();
+        _articles.addAll(await _newsService.getNewsByCategory(category));
+      } else {
+        _articles.clear();
+        _articles.addAll(await _newsService.fetchAndCacheNews());
+      }
     } catch (e) {
       _error = 'Failed to load news: $e';
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  // Categorize news by keywords
-  void _categorizeNews() {
-    // Market news contains keywords related to stock market
-    _marketNews = _allNews.where((article) {
-      final text = '${article.title} ${article.description}'.toLowerCase();
-      return text.contains('stock') ||
-          text.contains('market') ||
-          text.contains('share') ||
-          text.contains('trading') ||
-          text.contains('investment');
-    }).toList();
-
-    // Economy news contains keywords related to economy
-    _economyNews = _allNews.where((article) {
-      final text = '${article.title} ${article.description}'.toLowerCase();
-      return text.contains('economy') ||
-          text.contains('economic') ||
-          text.contains('growth') ||
-          text.contains('gdp') ||
-          text.contains('inflation') ||
-          text.contains('policy') ||
-          text.contains('finance');
-    }).toList();
   }
 
   // Search news
@@ -204,5 +175,14 @@ class NewsProvider with ChangeNotifier {
   // Refresh news data
   Future<void> refreshNews() async {
     await fetchNews();
+  }
+
+  Future<List<NewsArticle>> getMarketNews() async {
+    try {
+      return await _newsService.getMarketNews();
+    } catch (e) {
+      _error = 'Failed to load market news: $e';
+      return [];
+    }
   }
 }

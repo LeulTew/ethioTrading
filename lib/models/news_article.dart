@@ -5,8 +5,6 @@ class NewsArticle {
   final String imageUrl;
   final String source;
   final DateTime publishedAt;
-  final List<String> categories;
-  final bool isFeatured;
 
   NewsArticle({
     required this.title,
@@ -15,23 +13,25 @@ class NewsArticle {
     required this.imageUrl,
     required this.source,
     required this.publishedAt,
-    this.categories = const [],
-    this.isFeatured = false,
   });
 
-  // Create news article from JSON
+  // Create from JSON (for API responses)
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
     return NewsArticle(
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
+      title: json['title'] ?? 'No title',
+      description: json['description'] ?? 'No description',
       url: json['url'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      source: json['source'] ?? '',
+      imageUrl: json['urlToImage'] ?? json['image'] ?? '',
+      source: json['source'] is String
+          ? json['source']
+          : json['source'] is Map
+              ? json['source']['name'] ?? 'Unknown'
+              : 'Unknown',
       publishedAt: json['publishedAt'] != null
-          ? DateTime.parse(json['publishedAt'])
-          : DateTime.now(),
-      categories: List<String>.from(json['categories'] ?? []),
-      isFeatured: json['isFeatured'] ?? false,
+          ? DateTime.tryParse(json['publishedAt']) ?? DateTime.now()
+          : json['datetime'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(json['datetime'] * 1000)
+              : DateTime.now(),
     );
   }
 
@@ -41,34 +41,9 @@ class NewsArticle {
       'title': title,
       'description': description,
       'url': url,
-      'imageUrl': imageUrl,
+      'urlToImage': imageUrl,
       'source': source,
       'publishedAt': publishedAt.toIso8601String(),
-      'categories': categories,
-      'isFeatured': isFeatured,
     };
-  }
-
-  // Create a copy with modifications
-  NewsArticle copyWith({
-    String? title,
-    String? description,
-    String? url,
-    String? imageUrl,
-    String? source,
-    DateTime? publishedAt,
-    List<String>? categories,
-    bool? isFeatured,
-  }) {
-    return NewsArticle(
-      title: title ?? this.title,
-      description: description ?? this.description,
-      url: url ?? this.url,
-      imageUrl: imageUrl ?? this.imageUrl,
-      source: source ?? this.source,
-      publishedAt: publishedAt ?? this.publishedAt,
-      categories: categories ?? this.categories,
-      isFeatured: isFeatured ?? this.isFeatured,
-    );
   }
 }

@@ -211,4 +211,10 @@ class Asset {
       return 0xFF757575; // Grey
     }
   }
+
+  // Convert Asset to JSON
+  Map<String, dynamic> toJson() => toMap();
+  
+  // Create Asset from JSON
+  factory Asset.fromJson(Map<String, dynamic> json) => Asset.fromMap(json);
 }
