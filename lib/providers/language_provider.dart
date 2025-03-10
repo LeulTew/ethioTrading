@@ -181,6 +181,27 @@ const Map<String, String> englishTranslations = {
   'no_assets_available': 'No assets available',
   'no_news_available': 'No news available',
 
+  // Tab names
+  'all': 'All',
+  'ethiopian': 'Ethiopian',
+  'intl': 'International',
+  'fav': 'Favorites',
+  'no_favorites': 'No favorites added',
+  'add_assets_to_favorites': 'Add assets to your favorites to see them here',
+
+  // International sectors
+  'technology': 'Technology',
+  'financial_services': 'Financial Services',
+  'healthcare': 'Healthcare',
+  'consumer_cyclical': 'Consumer Cyclical',
+  'energy': 'Energy',
+  'utilities': 'Utilities',
+  'communication_services': 'Communication Services',
+  'industrials': 'Industrials',
+  'basic_materials': 'Basic Materials',
+  'real_estate': 'Real Estate',
+  'consumer_defensive': 'Consumer Defensive',
+
   // Notifications
   'notifications': 'Notifications',
   'notification_settings': 'Notification Settings',
@@ -606,13 +627,23 @@ const Map<String, String> amharicTranslations = {
   'all_sectors': 'ሁሉም ዘርፎች',
   'market_summary': 'የገበያ ማጠቃለያ',
   'search_stocks': 'አክሲዮኖችን ይፈልጉ',
-  // Removing duplicate keys that already exist in the map
-  // 'volume': 'መጠን',
-  // 'gainers': 'አትራፊዎች',
-  // 'losers': 'ኪሳራ ያጋጠማቸው',
-  // 'all': 'ሁሉም',
-  // 'ethiopian': 'ኢትዮጵያዊ',
-  // 'international': 'ዓለምአቀፍ',
-  // 'market_open': 'ገበያ ክፍት',
-  // 'market_closed': 'ገበያ ዝግ',
+  'technology': 'ቴክኖሎጂ',
+  'financial_services': 'የፋይናንስ አገልግሎት',
+  'healthcare': 'ጤና',
+  'consumer_cyclical': 'የሸማቾች ዑደታዊ',
+  'energy': 'ኃይል',
+  'utilities': 'መገልገያዎች',
+  'communication_services': 'የመገናኛ አገልግሎቶች',
+  'industrials': 'ኢንዱስትሪዎች',
+  'basic_materials': 'መሠረታዊ ቁሳቁሶች',
+  'real_estate': 'ንብረት',
+  'consumer_defensive': 'የሸማቾች መከላከያ',
+
+  // Tab names
+  'all_tabs': 'ሁሉም',
+  'ethiopian': 'ኢትዮጵያ',
+  'intl': 'ዓለም አቀፍ',
+  'fav': 'ምርጦች',
+  'no_favorites': 'ምንም ምርጦች የሉም',
+  'add_assets_to_favorites': 'እዚህ ለማየት ንብረቶችን ወደ ምርጦችዎ ይጨምሩ',
 };

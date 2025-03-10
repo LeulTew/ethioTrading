@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
-import 'dart:ui'; // Add this import for ImageFilter
 import '../data/ethio_data.dart' as ethio_data;
 import '../providers/language_provider.dart';
 import '../providers/market_provider.dart';
 import '../models/asset.dart';
 import 'stock_detail_screen.dart';
 import '../theme/app_theme.dart';
-// Import other screens for navigation
+import '../widgets/custom_bottom_nav.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -21,6 +20,10 @@ class _MarketScreenState extends State<MarketScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedSector = 'All';
+
+  // Add international sector filter
+  String _selectedInternationalSector = 'All';
+
   String _searchQuery = '';
   late Timer _marketStatusTimer;
   bool _isMarketOpen = false;
@@ -28,7 +31,22 @@ class _MarketScreenState extends State<MarketScreen>
   int _selectedTimeRange = 1; // 0: 1D, 1: 1W, 2: 1M, 3: 3M, 4: 1Y, 5: ALL
   int _currentTabIndex =
       0; // 0: All, 1: Ethiopian, 2: International, 3: Favorites
-  // Remove unused _currentNavIndex field
+
+  // Define international sectors with values from Finnhub/Alpha Vantage APIs
+  final List<String> _internationalSectors = [
+    'All',
+    'Technology',
+    'Financial Services',
+    'Healthcare',
+    'Consumer Cyclical',
+    'Energy',
+    'Utilities',
+    'Communication Services',
+    'Industrials',
+    'Basic Materials',
+    'Real Estate',
+    'Consumer Defensive'
+  ];
 
   @override
   void initState() {
@@ -92,8 +110,22 @@ class _MarketScreenState extends State<MarketScreen>
       final matchesSearch =
           asset.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               asset.symbol.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesSector =
-          _selectedSector == 'All' || asset.sector == _selectedSector;
+
+      // Apply different sector filtering based on tab
+      bool matchesSector = true;
+      if (_currentTabIndex == 2) {
+        // International tab
+        if (_selectedInternationalSector != 'All') {
+          // Handle various API naming conventions for sectors
+          matchesSector = asset.sector == _selectedInternationalSector ||
+              asset.sector.contains(_selectedInternationalSector) ||
+              _selectedInternationalSector.contains(asset.sector);
+        }
+      } else {
+        matchesSector =
+            _selectedSector == 'All' || asset.sector == _selectedSector;
+      }
+
       return matchesSearch && matchesSector;
     }).toList();
   }
@@ -158,6 +190,12 @@ class _MarketScreenState extends State<MarketScreen>
   }
 
   Widget _buildSectorFilter(LanguageProvider lang) {
+    // Show appropriate filter based on selected tab
+    if (_currentTabIndex == 2) {
+      // International tab
+      return _buildInternationalSectorFilter(lang);
+    }
+
     return Container(
       height: 40,
       margin: const EdgeInsets.only(bottom: 16),
@@ -177,26 +215,84 @@ class _MarketScreenState extends State<MarketScreen>
     );
   }
 
-  Widget _buildFilterChip(String sector, String label) {
+  // New method for international sector filter
+  Widget _buildInternationalSectorFilter(LanguageProvider lang) {
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: _internationalSectors.map((sector) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _buildFilterChip(sector,
+                lang.translate(sector.toLowerCase().replaceAll(' ', '_')),
+                isInternational: true),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String sector, String label,
+      {bool isInternational = false}) {
     final theme = Theme.of(context);
-    final isSelected = sector == _selectedSector;
+
+    // Check against the appropriate selected sector variable
+    final isSelected = isInternational
+        ? sector == _selectedInternationalSector
+        : sector == _selectedSector;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: isSelected
-            ? theme.colorScheme.primary.withAlpha(51)
-            : theme.colorScheme.surface,
+        gradient: isSelected
+            ? LinearGradient(
+                colors: isInternational
+                    ? [
+                        theme.colorScheme.primary.withAlpha(51),
+                        theme.colorScheme.secondary.withAlpha(51),
+                      ]
+                    : AppTheme.primaryGradient
+                        .map((c) => c.withAlpha(51))
+                        .toList(),
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: isSelected ? null : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isSelected
-              ? theme.colorScheme.primary
-              : Colors.grey.withAlpha(77),
+              ? isInternational
+                  ? theme.colorScheme.secondary
+                  : theme.colorScheme.primary
+              : theme.colorScheme.outline.withAlpha(77),
           width: 1.5,
         ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: (isInternational
+                          ? theme.colorScheme.secondary
+                          : theme.colorScheme.primary)
+                      .withAlpha(30),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: InkWell(
-        onTap: () => setState(() => _selectedSector = sector),
+        onTap: () => setState(() {
+          // Update appropriate filter variable
+          if (isInternational) {
+            _selectedInternationalSector = sector;
+          } else {
+            _selectedSector = sector;
+          }
+        }),
         borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -204,7 +300,9 @@ class _MarketScreenState extends State<MarketScreen>
             label,
             style: TextStyle(
               color: isSelected
-                  ? theme.colorScheme.primary
+                  ? isInternational
+                      ? theme.colorScheme.secondary
+                      : theme.colorScheme.primary
                   : theme.colorScheme.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -588,28 +686,9 @@ class _MarketScreenState extends State<MarketScreen>
           ],
         ),
       ),
-      // Replace the custom BottomAppBar with BottomNavigationBar to match other screens
-      bottomNavigationBar: BottomNavigationBar(
+      // Use CustomBottomNavBar for consistent UI across screens
+      bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 1, // Market is selected
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
-            label: lang.translate('home'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.show_chart),
-            label: lang.translate('market'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: lang.translate('portfolio'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
-            label: lang.translate('profile'),
-          ),
-        ],
         onTap: (index) {
           if (index != 1) {
             // Navigate to the appropriate screen
@@ -621,114 +700,135 @@ class _MarketScreenState extends State<MarketScreen>
     );
   }
 
+  // Redesigned modern tab bar
   Widget _buildTabBar(ThemeData theme, LanguageProvider lang) {
-    return Container(
-      height: 52,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha:0.8),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: theme.colorScheme.onSurface
-                    .withValues(alpha:0.1), // Fixed deprecated property
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.shadowColor.withValues(alpha:0.1),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withAlpha(40),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadowColor.withAlpha(15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: AppTheme.primaryGradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              // Animated selection indicator
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                left: _currentTabIndex *
+                    (MediaQuery.of(context).size.width - 32) /
+                    4,
+                top: 4,
+                bottom: 4,
+                width: (MediaQuery.of(context).size.width - 32) / 4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(
+                      colors: AppTheme.primaryGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryGradient.last.withAlpha(40),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha:0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+              ),
+
+              // Tab buttons
+              TabBar(
+                controller: _tabController,
+                indicator: const BoxDecoration(), // No default indicator
+                labelColor: Colors.white,
+                unselectedLabelColor:
+                    theme.colorScheme.onSurface.withAlpha(180),
+                labelStyle: GoogleFonts.spaceGrotesk(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                unselectedLabelStyle: GoogleFonts.spaceGrotesk(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+                tabs: [
+                  Tab(
+                    child: _buildTabContent(
+                      Icons.language,
+                      lang.translate('all'),
+                      _currentTabIndex == 0,
+                    ),
+                  ),
+                  Tab(
+                    child: _buildTabContent(
+                      Icons.flag,
+                      lang.translate('ethiopian'),
+                      _currentTabIndex == 1,
+                      useIcon: false,
+                      emojiText: '🇪🇹',
+                    ),
+                  ),
+                  Tab(
+                    child: _buildTabContent(
+                      Icons.public,
+                      lang.translate('intl'),
+                      _currentTabIndex == 2,
+                      useIcon: false,
+                      emojiText: '🌍',
+                    ),
+                  ),
+                  Tab(
+                    child: _buildTabContent(
+                      Icons.star,
+                      lang.translate('fav'),
+                      _currentTabIndex == 3,
+                    ),
                   ),
                 ],
               ),
-              labelColor: theme.colorScheme.onPrimary,
-              unselectedLabelColor: theme.colorScheme.onSurface,
-              labelStyle: GoogleFonts.spaceGrotesk(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-              unselectedLabelStyle: GoogleFonts.spaceGrotesk(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-              splashBorderRadius: BorderRadius.circular(24),
-              dividerHeight: 0,
-              tabs: [
-                Tab(
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.language, size: 16),
-                      const SizedBox(width: 6),
-                      Text(lang.translate('all')),
-                    ],
-                  ),
-                ),
-                Tab(
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('🇪🇹'),
-                      const SizedBox(width: 6),
-                      Text(lang.translate('ethiopian')),
-                    ],
-                  ),
-                ),
-                Tab(
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('🌍'),
-                      const SizedBox(width: 6),
-                      Text(lang.translate('international')),
-                    ],
-                  ),
-                ),
-                Tab(
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.star, size: 16),
-                      const SizedBox(width: 4),
-                      Text(lang.translate('favorite')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper for building tab content
+  Widget _buildTabContent(IconData icon, String text, bool isSelected,
+      {bool useIcon = true, String emojiText = ''}) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: isSelected ? 1.0 : 0.8,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (useIcon)
+            Icon(icon, size: 16)
+          else
+            Text(emojiText, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
       ),
     );
   }

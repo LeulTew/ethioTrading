@@ -10,6 +10,7 @@ import '../utils/ethiopian_utils.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/asset.dart';
+import '../widgets/custom_bottom_nav.dart';
 import 'stock_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -893,27 +894,8 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
+        bottomNavigationBar: CustomBottomNavBar(
           currentIndex: 0, // Home is selected
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.home),
-              label: languageProvider.translate('home'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.show_chart),
-              label: languageProvider.translate('market'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.account_balance_wallet),
-              label: languageProvider.translate('portfolio'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.person),
-              label: languageProvider.translate('profile'),
-            ),
-          ],
           onTap: (index) {
             if (index != 0) {
               // Navigate to the appropriate screen

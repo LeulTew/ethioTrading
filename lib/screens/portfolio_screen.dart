@@ -7,6 +7,7 @@ import '../providers/language_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/portfolio_provider.dart';
 import '../providers/market_provider.dart';
+import '../widgets/custom_bottom_nav.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -207,27 +208,8 @@ class _PortfolioScreenState extends State<PortfolioScreen>
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 2, // Portfolio is selected
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
-            label: lang.translate('home'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.show_chart),
-            label: lang.translate('market'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: lang.translate('portfolio'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
-            label: lang.translate('profile'),
-          ),
-        ],
         onTap: (index) {
           if (index != 2) {
             // Navigate to the appropriate screen

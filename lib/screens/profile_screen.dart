@@ -7,6 +7,7 @@ import 'dart:ui';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/ethiopian_utils.dart';
+import '../widgets/custom_bottom_nav.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
@@ -705,27 +706,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           _buildSecurityTab(),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 3, // Profile is selected
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
-            label: lang.translate('home'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.show_chart),
-            label: lang.translate('market'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: lang.translate('portfolio'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
-            label: lang.translate('profile'),
-          ),
-        ],
         onTap: (index) {
           if (index != 3) {
             // Navigate to the appropriate screen
