@@ -45,6 +45,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   bool showGrid = true;
   bool _isLoading = true;
   late bool _isFavorite;
+  bool _isLoadingMore = false; // Initialize loading state
 
   @override
   void initState() {
@@ -53,6 +54,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
     _quantityController.text = '1';
     _priceController.text = widget.asset.price.toString();
     _isFavorite = widget.asset.isFavorite;
+    _isLoadingMore = false; // Initialize loading state
     _initializeData();
   }
 
@@ -66,31 +68,63 @@ class _StockDetailScreenState extends State<StockDetailScreen>
 
   Future<void> _generateCandleData() async {
     final random = math.Random();
-    double open = widget.asset.price;
+    double open = widget.asset.price > 0
+        ? widget.asset.price
+        : 100.0; // Ensure non-zero starting price
     double close = open;
-    final List<candlestick.Candle> generatedCandles =
-        []; // Fix: use namespaced Candle type
+    final List<candlestick.Candle> generatedCandles = [];
+
+    // Different data generation strategy based on asset type
+    final bool isInternational = !widget.asset.symbol.contains('.ET') &&
+        !widget.asset.sector.contains('Bank') &&
+        !widget.asset.sector.contains('Manufacturing') &&
+        !widget.asset.sector.contains('Agriculture') &&
+        !widget.asset.sector.contains('Transport') &&
+        !widget.asset.sector.contains('Telecom') &&
+        !widget.asset.sector.contains('Utility');
 
     // Generate 100 candles with realistic price movements
     for (int i = 100; i > 0; i--) {
       open = close;
-      // More realistic price movements based on Ethiopian market rules (±10% daily limit)
-      final maxChange = open * 0.10; // 10% max daily move
-      final changeAmount = (random.nextDouble() * 2 - 1) * maxChange;
+
+      // Protect against zero or negative prices
+      if (open <= 0) open = 0.01;
+
+      // Adjust volatility based on market type - international markets are more volatile
+      final maxChange = open * (isInternational ? 0.15 : 0.10);
+
+      // Use a safer random range to avoid extreme values
+      final changeAmount = (random.nextDouble() * 1.8 - 0.9) * maxChange;
       close = open + changeAmount;
 
-      final high = math.max(open, close) * (1 + random.nextDouble() * 0.02);
-      final low = math.min(open, close) * (1 - random.nextDouble() * 0.02);
+      // Protect against negative or extremely low prices
+      if (close <= 0) close = 0.01;
 
-      // Volume increases with price volatility
-      final volatility = (high - low) / open;
-      final volume =
-          widget.asset.volume * (1 + volatility * 2) * random.nextDouble();
+      // Ensure high is actually higher than both open and close
+      final high = math.max(open, close) *
+          (1 + random.nextDouble() * (isInternational ? 0.03 : 0.02));
+
+      // Ensure low is actually lower than both open and close but still positive
+      final low = math.max(
+          0.01,
+          math.min(open, close) *
+              (1 - random.nextDouble() * (isInternational ? 0.03 : 0.02)));
+
+      // Protect against invalid volume calculations
+      final volatility =
+          high > low ? (high - low) / math.max(0.01, open) : 0.01;
+      final volume = math.max(1.0,
+          widget.asset.volume * (1 + volatility * 2) * random.nextDouble());
+
+      // Create date with proper time difference (more recent = smoother interaction)
+      final date = DateTime.now().subtract(Duration(
+        days: i ~/ 2,
+        hours: (i % 2) * 12, // Add hourly data for smoother charts
+      ));
 
       generatedCandles.add(
         candlestick.Candle(
-          // Fix: use namespaced Candle constructor
-          date: DateTime.now().subtract(Duration(days: i)),
+          date: date,
           high: high,
           low: low,
           open: open,
@@ -135,30 +169,221 @@ class _StockDetailScreenState extends State<StockDetailScreen>
         children: [
           _buildChartControls(),
           Expanded(
-            child: candlestick.Candlesticks(
-              // Fix: use namespaced Candlesticks
-              candles: candles,
-              actions: [
-                candlestick.ToolBarAction(
-                  // Fix: use namespaced ToolBarAction
-                  onPressed: () => setState(() => showGrid = !showGrid),
-                  child: Icon(
-                    showGrid ? Icons.grid_on : Icons.grid_off,
-                    color: Colors.white,
+            child: Stack(
+              children: [
+                // Main chart component with error handling
+                candles.isEmpty
+                    ?
+                    // Show loading or empty state when no data
+                    Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Loading chart data...',
+                              style: GoogleFonts.spaceGrotesk(),
+                            ),
+                          ],
+                        ),
+                      )
+                    :
+                    // Wrap the chart in a try-catch to protect against rendering errors
+                    Builder(builder: (context) {
+                        try {
+                          return candlestick.Candlesticks(
+                            key: ValueKey(
+                                'chart_${widget.asset.symbol}_$selectedTimeframe'),
+                            candles: candles,
+                            actions: [
+                              candlestick.ToolBarAction(
+                                onPressed: () =>
+                                    setState(() => showGrid = !showGrid),
+                                child: Icon(
+                                  showGrid ? Icons.grid_on : Icons.grid_off,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              candlestick.ToolBarAction(
+                                onPressed: () =>
+                                    setState(() => showVolume = !showVolume),
+                                child: Icon(
+                                  showVolume
+                                      ? Icons.show_chart
+                                      : Icons.bar_chart,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                            onLoadMoreCandles: _loadMoreCandles,
+                          );
+                        } catch (e) {
+                          // If rendering fails, show error message
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.error_outline,
+                                      size: 48, color: Colors.red),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Error displaying chart',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    e.toString(),
+                                    style:
+                                        GoogleFonts.spaceGrotesk(fontSize: 14),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() => candles = []);
+                                      _generateCandleData();
+                                    },
+                                    child: const Text('Regenerate Chart'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      }),
+
+                // Overlay gesture hints - shown only on first view
+                if (_shouldShowHints())
+                  Positioned.fill(
+                    child: _buildChartInteractionHints(),
                   ),
-                ),
-                candlestick.ToolBarAction(
-                  // Fix: use namespaced ToolBarAction
-                  onPressed: () => setState(() => showVolume = !showVolume),
-                  child: Icon(
-                    showVolume ? Icons.show_chart : Icons.bar_chart,
-                    color: Colors.white,
-                  ),
-                ),
               ],
             ),
           ),
           _buildTimeframeSelector(),
+        ],
+      ),
+    );
+  }
+
+  // New method to load more candles when scrolling to the edge
+  Future<void> _loadMoreCandles() async {
+    if (_isLoadingMore) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final random = math.Random();
+      // Safely access the first candle, defaulting to reasonable values if empty
+      final double startingOpen = candles.isNotEmpty
+          ? math.max(0.01, candles.first.open * 0.95)
+          : 100.0;
+
+      final newCandles = <candlestick.Candle>[];
+      double open = startingOpen;
+
+      // Generate 20 more historical candles
+      for (int i = 1; i <= 20; i++) {
+        // Protect against zero or negative values
+        if (open <= 0) open = 0.01;
+
+        // Use constrained random changes to avoid extreme values
+        final close = open * (1 + (random.nextDouble() * 0.08 - 0.04));
+        final high = math.max(open, close) * (1 + random.nextDouble() * 0.02);
+        final low = math.max(
+            0.01, math.min(open, close) * (1 - random.nextDouble() * 0.02));
+
+        // Ensure positive volume
+        final volume = math.max(1.0, widget.asset.volume * random.nextDouble());
+
+        final date = candles.isNotEmpty
+            ? candles.first.date.subtract(Duration(days: i))
+            : DateTime.now().subtract(Duration(days: 100 + i));
+
+        newCandles.add(candlestick.Candle(
+          date: date,
+          high: high,
+          low: low,
+          open: open,
+          close: close,
+          volume: volume,
+        ));
+
+        open = close;
+      }
+
+      setState(() {
+        if (candles.isEmpty) {
+          candles = [...newCandles];
+        } else {
+          candles = [...newCandles.reversed, ...candles];
+        }
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  // Show gesture hints overlay for new users
+  bool _shouldShowHints() {
+    // In production, use SharedPreferences to show only on first view
+    return false; // Disabled for production, enable for testing
+  }
+
+  // Overlay with gesture instructions
+  Widget _buildChartInteractionHints() {
+    return Container(
+      color: Colors.black54,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.touch_app, color: Colors.white, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Chart Interactions:',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildHintItem(Icons.drag_handle, 'Drag to pan'),
+          _buildHintItem(Icons.pinch, 'Pinch to zoom'),
+          _buildHintItem(Icons.touch_app, 'Tap to see details'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => setState(() {}), // Force rebuild to hide overlay
+            child: const Text('Got it!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHintItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            text, // Removed unnecessary braces in string interpolation
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 16,
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
