@@ -64,7 +64,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => LanguageProvider(prefs)),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(
+            create: (_) => AuthProvider(firebaseAuth: firebaseAuth)),
         ChangeNotifierProvider(
           create: (_) => MarketProvider(
             apiService: apiService,
@@ -101,32 +102,72 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final languageProvider = Provider.of<LanguageProvider>(context);
+    final marketProvider = Provider.of<MarketProvider>(context);
 
     return MaterialApp(
-      title: languageProvider.translate('app_title'),
+      title: 'Ethio Trading',
+      navigatorKey: marketProvider.navigatorKey,
+
+      // Use proper theme configuration from AppTheme
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
-      debugShowCheckedModeBanner: false,
 
-      // Define routes
+      locale: const Locale('en', ''),
+      supportedLocales: const [
+        Locale('en', ''), // English
+        Locale('am', ''), // Amharic
+      ],
+
+      // Use a fixed initial route instead of conditional logic
       initialRoute: '/login',
+
       routes: {
-        '/home': (context) => const HomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/': (context) => HomeScreen(
+              onThemeChanged: (themeName) {
+                // Use the correct method for theme changes
+                if (themeName == 'dark') {
+                  themeProvider.setThemeMode(ThemeMode.dark);
+                } else {
+                  themeProvider.setThemeMode(ThemeMode.light);
+                }
+              },
+            ),
+        // Add a duplicate route for '/home' pointing to the same screen
+        '/home': (context) => HomeScreen(
+              onThemeChanged: (theme) {
+                if (theme == 'dark') {
+                  themeProvider.setThemeMode(ThemeMode.dark);
+                } else {
+                  themeProvider.setThemeMode(ThemeMode.light);
+                }
+              },
+            ),
         '/market': (context) => const MarketScreen(),
         '/portfolio': (context) => const PortfolioScreen(),
         '/profile': (context) => ProfileScreen(
-              onThemeChanged: themeProvider.setThemeMode,
+              onThemeChanged: (themeMode) {
+                // Use the correct method for theme changes
+                themeProvider.setThemeMode(themeMode);
+              },
             ),
-        '/news': (context) => const NewsScreen(), // Add the news screen route
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/news': (context) => const NewsScreen(),
       },
-      // Fallback for unknown routes
+      // Add an onUnknownRoute handler for better error handling
       onUnknownRoute: (settings) => MaterialPageRoute(
-        builder: (context) => const HomeScreen(),
+        builder: (context) => HomeScreen(
+          onThemeChanged: (theme) {
+            // Same theme handling code
+            if (theme == 'dark') {
+              themeProvider.setThemeMode(ThemeMode.dark);
+            } else {
+              themeProvider.setThemeMode(ThemeMode.light);
+            }
+          },
+        ),
       ),
     );
   }

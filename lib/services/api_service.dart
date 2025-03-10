@@ -15,6 +15,7 @@ class ApiService {
   final Logger _logger = Logger('ApiService');
   final String _cachedAssetsKey = 'cached_ethiopian_assets';
   final String _lastUpdateTimeKey = 'last_update_time';
+  final MarketDataService _marketDataService = MarketDataService();
 
   ApiService({
     required FirebaseDatabase database,
@@ -22,9 +23,12 @@ class ApiService {
   })  : _database = database,
         _auth = auth;
 
-  // Fetch international market data using API ONLY
-  Future<List<Asset>> fetchInternationalMarketData() async {
-    _logger.info('Fetching international market data');
+  // Fetch international market data with API prioritization option
+  Future<List<Asset>> fetchInternationalMarketData({
+    bool prioritizeAlphaVantage = false,
+  }) async {
+    _logger.info(
+        'Fetching international market data with ${prioritizeAlphaVantage ? 'Alpha Vantage' : 'Finnhub'} priority');
     List<Asset> assets = [];
 
     try {
@@ -35,18 +39,20 @@ class ApiService {
           sharedPrefs.getInt('international_last_update_time') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
 
-      // If cache is valid (less than 5 minutes old), use it
-      if (cachedData != null && now - lastUpdate < 300000) {
+      // If cache is valid (less than 5 minutes old) and not retrying, use it
+      if (cachedData != null &&
+          now - lastUpdate < 300000 &&
+          !prioritizeAlphaVantage) {
+        // Skip cache when explicitly prioritizing
         _logger.info('Using cached international market data');
         final List<dynamic> decoded = json.decode(cachedData);
         return decoded.map((item) => Asset.fromJson(item)).toList();
       }
 
-      // Try API-only approach for international data
-      _logger
-          .info('Cache expired or not available, fetching fresh data from API');
-      final marketDataService = MarketDataService();
-      assets = await marketDataService.fetchInternationalStocks();
+      // No valid cache or retrying, fetch fresh data
+      _logger.info('Cache expired or not available, fetching fresh data');
+      assets = await _marketDataService.fetchInternationalStocks(
+          prioritizeAlphaVantage: prioritizeAlphaVantage);
 
       // Cache the fetched data if not empty
       if (assets.isNotEmpty) {
@@ -56,7 +62,7 @@ class ApiService {
         _logger
             .info('Successfully cached ${assets.length} international stocks');
       } else {
-        _logger.warning('No international assets fetched from API');
+        _logger.warning('No international assets fetched from APIs');
       }
 
       // Return whatever we have, even if empty - NO MOCK DATA
@@ -73,7 +79,7 @@ class ApiService {
         return decoded.map((item) => Asset.fromJson(item)).toList();
       }
 
-      // If all else fails, return empty list - NO MOCK DATA FOR INTERNATIONAL
+      // If all else fails, return empty list - NO MOCK DATA
       _logger.severe('No international market data available');
       return [];
     }

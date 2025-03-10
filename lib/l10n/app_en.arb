@@ -1,0 +1,5 @@
+{
+  "international_data_error": "Failed to load international market data",
+  "api_error": "API connection error. Please check your internet connection and try again.",
+  "retry": "Retry"
+}

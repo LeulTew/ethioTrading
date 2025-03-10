@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added for TextInputFormatter
-import 'package:candlesticks/candlesticks.dart'; // Added for Candle and Candlesticks
+import 'package:candlesticks/candlesticks.dart'
+    as candlestick; // Added namespace
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ import '../providers/language_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/market_provider.dart';
 import '../models/asset.dart';
+// Import the chart models
 
 // Add extension for ColorScheme
 extension ColorSchemeExt on ColorScheme {
@@ -38,7 +40,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
   bool isMarketOrder = true;
   String selectedTimeframe = '1D';
   List<Map<String, dynamic>> mockNews = [];
-  List<Candle> candles = [];
+  List<candlestick.Candle> candles = []; // Fix: use namespaced Candle type
   bool showVolume = true;
   bool showGrid = true;
   bool _isLoading = true;
@@ -66,7 +68,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
     final random = math.Random();
     double open = widget.asset.price;
     double close = open;
-    final List<Candle> generatedCandles = [];
+    final List<candlestick.Candle> generatedCandles =
+        []; // Fix: use namespaced Candle type
 
     // Generate 100 candles with realistic price movements
     for (int i = 100; i > 0; i--) {
@@ -85,7 +88,8 @@ class _StockDetailScreenState extends State<StockDetailScreen>
           widget.asset.volume * (1 + volatility * 2) * random.nextDouble();
 
       generatedCandles.add(
-        Candle(
+        candlestick.Candle(
+          // Fix: use namespaced Candle constructor
           date: DateTime.now().subtract(Duration(days: i)),
           high: high,
           low: low,
@@ -131,17 +135,20 @@ class _StockDetailScreenState extends State<StockDetailScreen>
         children: [
           _buildChartControls(),
           Expanded(
-            child: Candlesticks(
+            child: candlestick.Candlesticks(
+              // Fix: use namespaced Candlesticks
               candles: candles,
               actions: [
-                ToolBarAction(
+                candlestick.ToolBarAction(
+                  // Fix: use namespaced ToolBarAction
                   onPressed: () => setState(() => showGrid = !showGrid),
                   child: Icon(
                     showGrid ? Icons.grid_on : Icons.grid_off,
                     color: Colors.white,
                   ),
                 ),
-                ToolBarAction(
+                candlestick.ToolBarAction(
+                  // Fix: use namespaced ToolBarAction
                   onPressed: () => setState(() => showVolume = !showVolume),
                   child: Icon(
                     showVolume ? Icons.show_chart : Icons.bar_chart,
@@ -866,7 +873,7 @@ class _StockDetailScreenState extends State<StockDetailScreen>
               controller: _tabController,
               children: [
                 _buildOverviewTab(theme, isPositiveChange, lang),
-                _buildAdvancedChart(),
+                _buildAdvancedChart(), // Use _buildPriceChart here if needed
                 _buildAnalysisTab(theme, lang),
                 _buildNewsTab(theme, lang),
               ],

@@ -12,12 +12,23 @@ class MarketProvider with ChangeNotifier {
   final FirebaseDatabase _database;
   final Logger _logger = Logger('MarketProvider');
 
+  // Add global navigator key to access context
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  // Getter for the navigator key
+  GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
+
   List<Asset> _ethiopianAssets = [];
   List<Asset> _internationalAssets = [];
   final List<Asset> _searchResults = [];
   List<Asset> _favoriteAssets = [];
   List<Map<String, dynamic>> _chartData = [];
   bool _isLoading = false;
+  bool _isInternationalError = false;
+  String _internationalErrorMessage = '';
+  String _apiSource = 'Unknown'; // Track which API succeeded
+  bool _isFinnhubError = false;
+  bool _isAlphaVantageError = false;
   bool _isMarketOpen = false;
   DateTime? _lastUpdated;
   Timer? _refreshTimer;
@@ -101,6 +112,29 @@ class MarketProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isMarketOpen => _isMarketOpen;
   DateTime? get lastUpdated => _lastUpdated;
+  bool get hasInternationalError => _isInternationalError;
+  String get internationalErrorMessage => _internationalErrorMessage;
+  String get apiSource => _apiSource;
+  bool get hasFinnhubError => _isFinnhubError;
+  bool get hasAlphaVantageError => _isAlphaVantageError;
+
+  String get detailedErrorMessage {
+    List<String> errors = [];
+
+    if (_isFinnhubError) {
+      errors.add("Finnhub API: Connection error");
+    }
+
+    if (_isAlphaVantageError) {
+      errors.add("Alpha Vantage API: Connection error");
+    }
+
+    if (errors.isEmpty) {
+      return _internationalErrorMessage;
+    } else {
+      return "${errors.join(" and ")}. $_internationalErrorMessage";
+    }
+  }
 
   // Format for display
   String get formattedLastUpdated {
@@ -109,46 +143,68 @@ class MarketProvider with ChangeNotifier {
         : '';
   }
 
-  // Fetch market data with the right sources for each type
+  // Fetch market data with comprehensive error handling for both APIs
   Future<void> fetchMarketData({bool useCache = true}) async {
     _isLoading = true;
+    // Reset error flags
+    _isInternationalError = false;
+    _internationalErrorMessage = '';
+    _isFinnhubError = false;
+    _isAlphaVantageError = false;
+    _apiSource = 'Unknown';
     notifyListeners();
 
     try {
-      // For international markets, only use API (no mock data)
-      _internationalAssets = await _apiService.fetchInternationalMarketData();
+      // Preload Ethiopian assets immediately from local data to ensure they're always available fast
+      _preloadEthiopianAssets();
 
-      // For Ethiopian markets, use EthioData and explicitly generate mock data
+      // For international markets, use combined API approach with detailed error handling
       try {
-        final ethiopianData = EthioData.generateMockEthioMarketData();
-        _ethiopianAssets = ethiopianData
-            .map((data) => Asset(
-                  name: data['name'] as String? ?? 'Unknown',
-                  symbol: data['symbol'] as String? ?? 'UNKNOWN',
-                  price: (data['price'] as num?)?.toDouble() ?? 0.0,
-                  change: (data['change'] as num?)?.toDouble() ?? 0.0,
-                  changePercent:
-                      (data['changePercent'] as num?)?.toDouble() ?? 0.0,
-                  volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
-                  sector: data['sector'] as String? ?? 'Unknown',
-                  ownership: data['ownership'] as String? ?? 'Unknown',
-                  marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
-                  lastUpdated: DateTime.now(),
-                  dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
-                  dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
-                  openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
-                  lotSize: (data['lotSize'] as int?) ?? 1,
-                  tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
-                ))
-            .toList();
+        final internationalAssets =
+            await _apiService.fetchInternationalMarketData();
 
-        _logger.info('Loaded ${_ethiopianAssets.length} Ethiopian assets');
+        // Check which API was used (if available in the response)
+        if (internationalAssets.isNotEmpty) {
+          // Try to determine which API provided the data by checking the asset source
+          if (internationalAssets.first.ownership.contains('Finnhub')) {
+            _apiSource = 'Finnhub';
+          } else if (internationalAssets.first.ownership
+              .contains('Alpha Vantage')) {
+            _apiSource = 'Alpha Vantage';
+          } else {
+            _apiSource = 'Combined APIs';
+          }
+
+          _internationalAssets = internationalAssets;
+          _logger.info(
+              'Loaded ${_internationalAssets.length} international assets from $_apiSource');
+        } else {
+          _isInternationalError = true;
+          _internationalErrorMessage =
+              'No international market data available from any API';
+          _logger.warning(_internationalErrorMessage);
+        }
       } catch (e) {
-        _logger.severe('Error loading Ethiopian assets: $e');
-      }
+        _isInternationalError = true;
 
-      _logger
-          .info('Loaded ${_internationalAssets.length} International assets');
+        // Try to determine which API failed based on the error message
+        if (e.toString().toLowerCase().contains('finnhub')) {
+          _isFinnhubError = true;
+          _internationalErrorMessage = 'Finnhub API error: ${e.toString()}';
+        } else if (e.toString().toLowerCase().contains('alpha') ||
+            e.toString().toLowerCase().contains('vantage')) {
+          _isAlphaVantageError = true;
+          _internationalErrorMessage =
+              'Alpha Vantage API error: ${e.toString()}';
+        } else {
+          _internationalErrorMessage = 'API error: ${e.toString()}';
+          // If we can't determine which API failed, assume both did
+          _isFinnhubError = true;
+          _isAlphaVantageError = true;
+        }
+
+        _logger.severe(_internationalErrorMessage);
+      }
 
       // Fetch chart data
       _chartData = await _apiService.getMarketChartData();
@@ -162,57 +218,94 @@ class MarketProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _logger.severe('Error fetching market data: $e');
+      _logger.severe('Error in fetchMarketData: $e');
+      _isLoading = false;
 
-      // If we fail to fetch international data, at least ensure Ethiopian data is loaded
+      // Ensure Ethiopian assets are always available even if overall fetch fails
       if (_ethiopianAssets.isEmpty) {
-        try {
-          final ethiopianData = EthioData.generateMockEthioMarketData();
-          _ethiopianAssets = ethiopianData
-              .map((data) => Asset(
-                    name: data['name'] as String? ?? 'Unknown',
-                    symbol: data['symbol'] as String? ?? 'UNKNOWN',
-                    price: (data['price'] as num?)?.toDouble() ?? 0.0,
-                    change: (data['change'] as num?)?.toDouble() ?? 0.0,
-                    changePercent:
-                        (data['changePercent'] as num?)?.toDouble() ?? 0.0,
-                    volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
-                    sector: data['sector'] as String? ?? 'Unknown',
-                    ownership: data['ownership'] as String? ?? 'Unknown',
-                    marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
-                    lastUpdated: DateTime.now(),
-                    dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
-                    dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
-                    openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
-                    lotSize: (data['lotSize'] as int?) ?? 1,
-                    tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
-                  ))
-              .toList();
-
-          _logger.info(
-              'Loaded ${_ethiopianAssets.length} Ethiopian assets after error');
-        } catch (ethioError) {
-          _logger.severe(
-              'Error loading Ethiopian assets after API failure: $ethioError');
-          _ethiopianAssets = []; // Ensure we have at least an empty list
-        }
+        _preloadEthiopianAssets();
       }
 
-      _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Preload Ethiopian assets synchronously from local data for instant access
+  void _preloadEthiopianAssets() {
+    try {
+      final ethiopianData = EthioData.generateMockEthioMarketData();
+      _ethiopianAssets = ethiopianData
+          .map((data) => Asset(
+                name: data['name'] as String? ?? 'Unknown',
+                symbol: data['symbol'] as String? ?? 'UNKNOWN',
+                price: (data['price'] as num?)?.toDouble() ?? 0.0,
+                change: (data['change'] as num?)?.toDouble() ?? 0.0,
+                changePercent:
+                    (data['changePercent'] as num?)?.toDouble() ?? 0.0,
+                volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
+                sector: data['sector'] as String? ?? 'Unknown',
+                ownership: data['ownership'] as String? ?? 'Unknown',
+                marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
+                lastUpdated: DateTime.now(),
+                dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
+                dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
+                openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
+                lotSize: (data['lotSize'] as int?) ?? 1,
+                tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
+              ))
+          .toList();
+
+      _logger.info(
+          'Pre-loaded ${_ethiopianAssets.length} Ethiopian assets immediately');
+
+      // Store to cache in background for faster future loads
+      _apiService.saveEthiopianAssetsToCache(_ethiopianAssets);
+    } catch (e) {
+      _logger.severe('Error pre-loading Ethiopian assets: $e');
+      // If even direct generation fails, try to use empty list but prevent app crash
+      if (_ethiopianAssets.isEmpty) {
+        _ethiopianAssets = [];
+      }
     }
   }
 
   // Toggle favorite status with Firebase persistence
   Future<void> toggleFavorite(Asset asset) async {
     try {
+      // Create loading indicator
+      if (_navigatorKey.currentContext != null) {
+        final scaffoldMessenger =
+            ScaffoldMessenger.of(_navigatorKey.currentContext!);
+        scaffoldMessenger.showSnackBar(SnackBar(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(strokeWidth: 2),
+              const SizedBox(width: 16),
+              Text(asset.isFavorite
+                  ? 'Removing from favorites...'
+                  : 'Adding to favorites...')
+            ],
+          ),
+          duration: const Duration(milliseconds: 800),
+        ));
+      }
+
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) {
         // Set the local state but inform the user they need to log in for persistence
         asset.isFavorite = !asset.isFavorite;
         _updateFavoriteAssets();
         notifyListeners();
-        throw Exception('You must be logged in to save favorites permanently');
+
+        if (_navigatorKey.currentContext != null) {
+          ScaffoldMessenger.of(_navigatorKey.currentContext!)
+              .showSnackBar(const SnackBar(
+            content:
+                Text('You must be logged in to save favorites permanently'),
+            duration: Duration(seconds: 3),
+          ));
+        }
+        return;
       }
 
       final ref = _database.ref('users/$userId/favorites/${asset.symbol}');
@@ -239,8 +332,25 @@ class MarketProvider with ChangeNotifier {
 
       _updateFavoriteAssets();
       notifyListeners();
+
+      // Show success message
+      if (_navigatorKey.currentContext != null) {
+        final scaffoldMessenger =
+            ScaffoldMessenger.of(_navigatorKey.currentContext!);
+        scaffoldMessenger.hideCurrentSnackBar();
+        scaffoldMessenger.showSnackBar(SnackBar(
+          content: Text(asset.isFavorite
+              ? '${asset.symbol} added to favorites'
+              : '${asset.symbol} removed from favorites'),
+          duration: const Duration(seconds: 2),
+        ));
+      }
     } catch (e) {
       _logger.warning('Error toggling favorite: $e');
+      if (_navigatorKey.currentContext != null) {
+        ScaffoldMessenger.of(_navigatorKey.currentContext!)
+            .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      }
     }
   }
 
@@ -346,7 +456,50 @@ class MarketProvider with ChangeNotifier {
           asset.symbol.toLowerCase().contains(lowercaseQuery) ||
           asset.name.toLowerCase().contains(lowercaseQuery))
     ]);
-
     notifyListeners();
+  }
+
+  // Manually retry loading international market data
+  Future<void> retryInternationalData() async {
+    _logger.info('Manually retrying international market data fetch');
+    _isLoading = true;
+    _isInternationalError = false;
+    _internationalErrorMessage = '';
+    notifyListeners();
+
+    try {
+      // When retrying, specify which API to prioritize based on previous errors
+      bool prioritizeAlphaVantage = _isFinnhubError && !_isAlphaVantageError;
+      _logger.info(
+          'Retrying with ${prioritizeAlphaVantage ? "Alpha Vantage" : "Finnhub"} priority');
+
+      // Pass retry information to the ApiService
+      final internationalAssets =
+          await _apiService.fetchInternationalMarketData(
+              prioritizeAlphaVantage: prioritizeAlphaVantage);
+
+      if (internationalAssets.isNotEmpty) {
+        _internationalAssets = internationalAssets;
+        _isInternationalError = false;
+        _isFinnhubError = false;
+        _isAlphaVantageError = false;
+        _logger.info(
+            'Successfully loaded ${_internationalAssets.length} international assets after retry');
+      } else {
+        _isInternationalError = true;
+        _internationalErrorMessage =
+            'No international market data available after retry';
+        _logger.warning(_internationalErrorMessage);
+      }
+    } catch (e) {
+      _isInternationalError = true;
+      _internationalErrorMessage =
+          'Failed to fetch international market data after retry: ${e.toString()}';
+      _logger.severe(_internationalErrorMessage);
+    } finally {
+      _lastUpdated = DateTime.now();
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+import 'dart:ui'; // Add this import for ImageFilter
 import '../data/ethio_data.dart' as ethio_data;
 import '../providers/language_provider.dart';
 import '../providers/market_provider.dart';
@@ -57,13 +58,19 @@ class _MarketScreenState extends State<MarketScreen>
     setState(() => _isLoading = true);
 
     try {
-      // Fetch market data using only API for international and EthioData for Ethiopian
+      // First show Ethiopian if available (should load instantly)
+      if (marketProvider.ethiopianAssets.isNotEmpty) {
+        setState(() => _isLoading = false);
+      }
+
+      // Then fetch all market data
       await marketProvider.fetchMarketData();
+
+      setState(() => _isLoading = false);
     } catch (e) {
       debugPrint('Error fetching market data: $e');
+      setState(() => _isLoading = false);
     }
-
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -388,6 +395,68 @@ class _MarketScreenState extends State<MarketScreen>
     });
   }
 
+  // Build a nice error message when international data fails to load
+  Widget _buildInternationalErrorMessage(
+      ThemeData theme, LanguageProvider lang) {
+    final marketProvider = Provider.of<MarketProvider>(context);
+
+    if (!marketProvider.hasInternationalError || _currentTabIndex != 2) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error.withAlpha(25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.error.withAlpha(75)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: theme.colorScheme.error),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  lang.translate('international_data_error'),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            marketProvider.internationalErrorMessage,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: theme.colorScheme.onSurface.withAlpha(178),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () => marketProvider.retryInternationalData(),
+              icon: const Icon(Icons.refresh),
+              label: Text(lang.translate('retry')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -429,6 +498,11 @@ class _MarketScreenState extends State<MarketScreen>
             _buildHeader(theme, lang),
             _buildTabBar(theme, lang),
             _buildMarketStatusBanner(theme, lang),
+
+            // Show error message for international data if needed
+            if (_currentTabIndex == 2 && marketProvider.hasInternationalError)
+              _buildInternationalErrorMessage(theme, lang),
+
             _buildMarketSummary(theme, lang, currentAssets),
             _buildSearchBar(theme, lang),
             _buildSectorFilter(lang),
@@ -441,7 +515,10 @@ class _MarketScreenState extends State<MarketScreen>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.search_off,
+                                _currentTabIndex == 2 &&
+                                        marketProvider.hasInternationalError
+                                    ? Icons.cloud_off
+                                    : Icons.search_off,
                                 size: 48,
                                 color: theme.colorScheme.primary.withAlpha(128),
                               ),
@@ -450,7 +527,10 @@ class _MarketScreenState extends State<MarketScreen>
                                 _currentTabIndex == 3 &&
                                         marketProvider.favoriteAssets.isEmpty
                                     ? lang.translate('no_favorites')
-                                    : lang.translate('no_search_results'),
+                                    : _currentTabIndex == 2 &&
+                                            marketProvider.hasInternationalError
+                                        ? lang.translate('api_error')
+                                        : lang.translate('no_search_results'),
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
@@ -458,6 +538,24 @@ class _MarketScreenState extends State<MarketScreen>
                                       .withAlpha(179),
                                 ),
                               ),
+                              if (_currentTabIndex == 2 &&
+                                  marketProvider.hasInternationalError)
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        marketProvider.retryInternationalData(),
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(lang.translate('retry')),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          theme.colorScheme.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (_currentTabIndex == 3 &&
                                   marketProvider.favoriteAssets.isEmpty)
                                 Padding(
@@ -525,32 +623,112 @@ class _MarketScreenState extends State<MarketScreen>
 
   Widget _buildTabBar(ThemeData theme, LanguageProvider lang) {
     return Container(
-      height: 48,
+      height: 52,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outline.withAlpha(51)),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(28),
       ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: theme.colorScheme.primary,
-        ),
-        labelColor: theme.colorScheme.onPrimary,
-        unselectedLabelColor: theme.colorScheme.onSurface,
-        labelStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-        unselectedLabelStyle: GoogleFonts.spaceGrotesk(),
-        tabs: [
-          Tab(text: lang.translate('all')),
-          Tab(text: lang.translate('ethiopian')),
-          Tab(text: lang.translate('international')),
-          const Tab(
-            icon: Icon(Icons.star),
-            iconMargin: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha:0.8),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: theme.colorScheme.onSurface
+                    .withValues(alpha:0.1), // Fixed deprecated property
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.shadowColor.withValues(alpha:0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: AppTheme.primaryGradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha:0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              labelColor: theme.colorScheme.onPrimary,
+              unselectedLabelColor: theme.colorScheme.onSurface,
+              labelStyle: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+              splashBorderRadius: BorderRadius.circular(24),
+              dividerHeight: 0,
+              tabs: [
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.language, size: 16),
+                      const SizedBox(width: 6),
+                      Text(lang.translate('all')),
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('🇪🇹'),
+                      const SizedBox(width: 6),
+                      Text(lang.translate('ethiopian')),
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('🌍'),
+                      const SizedBox(width: 6),
+                      Text(lang.translate('international')),
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.star, size: 16),
+                      const SizedBox(width: 4),
+                      Text(lang.translate('favorite')),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -785,7 +963,6 @@ class _MarketScreenState extends State<MarketScreen>
   Widget _buildAssetCard(Asset asset, ThemeData theme, LanguageProvider lang) {
     final isPositive = asset.change >= 0;
     final changeColor = isPositive ? AppTheme.bullish : AppTheme.bearish;
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -839,6 +1016,7 @@ class _MarketScreenState extends State<MarketScreen>
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -886,6 +1064,7 @@ class _MarketScreenState extends State<MarketScreen>
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -894,14 +1073,13 @@ class _MarketScreenState extends State<MarketScreen>
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: changeColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: changeColor.withAlpha(38),
                       borderRadius: BorderRadius.circular(8),
@@ -938,8 +1116,12 @@ class _MarketScreenState extends State<MarketScreen>
                   ),
                 ],
               ),
-              // Add quick favorite toggle button
               IconButton(
+                splashRadius: 20,
+                iconSize: 20,
+                tooltip: asset.isFavorite
+                    ? lang.translate('remove_from_favorites')
+                    : lang.translate('add_to_watchlist'),
                 icon: Icon(
                   asset.isFavorite ? Icons.star : Icons.star_border,
                   color: asset.isFavorite ? Colors.amber : Colors.grey,
@@ -949,11 +1131,6 @@ class _MarketScreenState extends State<MarketScreen>
                       Provider.of<MarketProvider>(context, listen: false);
                   marketProvider.toggleFavorite(asset);
                 },
-                iconSize: 20,
-                splashRadius: 20,
-                tooltip: asset.isFavorite
-                    ? lang.translate('remove_from_favorites')
-                    : lang.translate('add_to_watchlist'),
               ),
             ],
           ),

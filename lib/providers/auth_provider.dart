@@ -12,7 +12,7 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  AuthProvider() {
+  AuthProvider({required FirebaseAuth firebaseAuth}) {
     _initAuth();
   }
 
