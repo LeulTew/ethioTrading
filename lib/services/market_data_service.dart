@@ -60,29 +60,40 @@ class MarketDataService {
     List<Asset> assets = [];
 
     try {
-      // Use Alpha Vantage for batch stock quotes (free tier allows limited requests)
+      // Try Alpha Vantage first as it has better CORS support
       for (final symbol in _internationalSymbols) {
         try {
           final asset = await _fetchStockFromAlphaVantage(symbol);
           if (asset != null) {
             assets.add(asset);
           }
-          // Add delay to respect API rate limits
           await Future.delayed(const Duration(milliseconds: 500));
         } catch (e) {
-          _logger.warning('Error fetching data for $symbol: $e');
+          _logger.warning(
+              'Error fetching data for $symbol from Alpha Vantage: $e');
+
+          // Fallback to Finnhub if Alpha Vantage fails
+          try {
+            final finnhubAsset = await _fetchStockFromFinnhub(symbol);
+            if (finnhubAsset != null) {
+              assets.add(finnhubAsset);
+            }
+          } catch (finnhubError) {
+            _logger.warning(
+                'Error fetching data for $symbol from Finnhub: $finnhubError');
+          }
         }
       }
 
       _logger.info('Fetched ${assets.length} international stocks');
     } catch (e) {
       _logger.severe('Error fetching international stocks: $e');
+    }
 
-      // Use cached data or generate fallback data if API fails
-      if (assets.isEmpty) {
-        assets = _generateFallbackStockData();
-        _logger.info('Using fallback stock data since API request failed');
-      }
+    // If we couldn't get any real data, use fallback data
+    if (assets.isEmpty) {
+      assets = _generateFallbackStockData();
+      _logger.info('Using fallback stock data since API requests failed');
     }
 
     return assets;
@@ -292,6 +303,58 @@ class MarketDataService {
     return null;
   }
 
+  Future<Asset?> _fetchStockFromFinnhub(String symbol) async {
+    if (_finnhubApiKey.isEmpty || _finnhubApiKey == 'YOUR_API_KEY_HERE') {
+      return null;
+    }
+
+    try {
+      final quoteUrl =
+          '$_finnhubBaseUrl/quote?symbol=$symbol&token=$_finnhubApiKey';
+      final profileUrl =
+          '$_finnhubBaseUrl/stock/profile2?symbol=$symbol&token=$_finnhubApiKey';
+
+      final headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Accept': 'application/json',
+      };
+
+      final responses = await Future.wait([
+        http.get(Uri.parse(quoteUrl), headers: headers),
+        http.get(Uri.parse(profileUrl), headers: headers),
+      ]);
+
+      if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
+        final quoteData = json.decode(responses[0].body);
+        final profileData = json.decode(responses[1].body);
+
+        return Asset(
+          symbol: symbol,
+          name: profileData['name'] ?? _getCompanyName(symbol),
+          price: (quoteData['c'] as num).toDouble(),
+          change: (quoteData['d'] as num).toDouble(),
+          changePercent: (quoteData['dp'] as num).toDouble(),
+          volume: (quoteData['v'] as num).toDouble(),
+          sector: profileData['finnhubIndustry'] ?? _getSector(symbol),
+          ownership: 'Public',
+          marketCap: profileData['marketCapitalization'] != null
+              ? (profileData['marketCapitalization'] as num).toDouble() *
+                  1000000
+              : 0.0,
+          lastUpdated: DateTime.now(),
+          dayHigh: (quoteData['h'] as num).toDouble(),
+          dayLow: (quoteData['l'] as num).toDouble(),
+          openPrice: (quoteData['o'] as num).toDouble(),
+          lotSize: 1,
+          tickSize: 0.01,
+        );
+      }
+    } catch (e) {
+      _logger.warning('Error in _fetchStockFromFinnhub for $symbol: $e');
+    }
+    return null;
+  }
+
   // Helper method to get company names
   String _getCompanyName(String symbol) {
     switch (symbol) {
@@ -390,7 +453,13 @@ class MarketDataService {
       // Candle data from Finnhub
       final url =
           '$_finnhubBaseUrl/stock/candle?symbol=$symbol&resolution=$resolution&from=$from&to=$to&token=$_finnhubApiKey';
-      final response = await http.get(Uri.parse(url));
+
+      final headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Accept': 'application/json',
+      };
+
+      final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

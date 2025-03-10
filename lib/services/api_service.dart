@@ -8,6 +8,7 @@ import '../data/ethio_data.dart';
 import '../config/env.dart';
 import 'package:logging/logging.dart';
 import '../data/mock_data.dart';
+import 'market_data_service.dart';
 
 class ApiService {
   final FirebaseDatabase _database;
@@ -28,15 +29,15 @@ class ApiService {
     List<Asset> assets = [];
 
     try {
-      // First check for cached data to prevent CORS issues on web
+      // First check for cached data
       final sharedPrefs = await SharedPreferences.getInstance();
       final cachedData = sharedPrefs.getString('cached_international_assets');
       final lastUpdate =
           sharedPrefs.getInt('international_last_update_time') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
 
-      // Use cached data if it's less than 30 minutes old
-      if (cachedData != null && now - lastUpdate < 1800000) {
+      // Use cached data if it's less than 5 minutes old
+      if (cachedData != null && now - lastUpdate < 300000) {
         _logger.info('Using cached international market data');
         final List<dynamic> decoded = json.decode(cachedData);
         assets = decoded.map((item) => Asset.fromJson(item)).toList();
@@ -45,12 +46,16 @@ class ApiService {
 
       // If no valid cache, try to fetch from API with error handling for CORS
       try {
-        // Use a proxy endpoint to avoid CORS issues in web
+        // Use the proxy endpoint with proper headers
         const url = '${Env.apiProxyUrl}/market/stocks';
         final response = await http.get(
           Uri.parse(url),
-          headers: {'X-API-Key': Env.apiKey},
-        ).timeout(const Duration(seconds: 5));
+          headers: {
+            'X-API-Key': Env.apiKey,
+            'Access-Control-Allow-Origin': '*',
+            'Accept': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
@@ -59,9 +64,9 @@ class ApiService {
               .toList();
 
           // Cache the fetched data
-          sharedPrefs.setString('cached_international_assets',
+          await sharedPrefs.setString('cached_international_assets',
               json.encode(assets.map((a) => a.toJson()).toList()));
-          sharedPrefs.setInt('international_last_update_time', now);
+          await sharedPrefs.setInt('international_last_update_time', now);
 
           _logger.info(
               'Successfully fetched ${assets.length} international stocks');
@@ -70,14 +75,11 @@ class ApiService {
               'API request failed with status: ${response.statusCode}');
         }
       } catch (e) {
-        _logger.warning('API request failed: $e, generating fallback data');
-        // If API request fails, generate fallback data
-        assets = _generateFallbackInternationalAssets();
-
-        // Cache the fallback data
-        sharedPrefs.setString('cached_international_assets',
-            json.encode(assets.map((a) => a.toJson()).toList()));
-        sharedPrefs.setInt('international_last_update_time', now);
+        _logger.warning(
+            'API request failed: $e, falling back to market data service');
+        // If proxy fails, try direct market data service
+        final marketDataService = MarketDataService();
+        assets = await marketDataService.fetchInternationalStocks();
       }
     } catch (e) {
       _logger.severe('Error in fetchInternationalMarketData: $e');
@@ -272,7 +274,7 @@ class ApiService {
                 symbol: data['symbol'] as String,
                 price: data['price'] as double,
                 change: data['change'] as double,
-                changePercent: data['change'] as double,
+                changePercent: data['changePercent'] as double,
                 volume: data['volume'] as double,
                 sector: data['sector'] as String,
                 ownership: data['ownership'] as String,
@@ -288,7 +290,6 @@ class ApiService {
 
       // Cache the generated assets
       await saveEthiopianAssetsToCache(ethiopianAssets);
-
       return ethiopianAssets;
     } catch (e) {
       _logger.severe('Error generating Ethiopian assets: $e');
