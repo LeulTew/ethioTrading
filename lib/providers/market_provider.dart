@@ -6,7 +6,6 @@ import 'package:logging/logging.dart';
 import '../models/asset.dart';
 import '../services/api_service.dart';
 import '../data/ethio_data.dart'; // Import Ethiopian data
-import '../data/mock_data.dart'; // Import mock data
 
 class MarketProvider with ChangeNotifier {
   final ApiService _apiService;
@@ -22,6 +21,7 @@ class MarketProvider with ChangeNotifier {
   bool _isMarketOpen = false;
   DateTime? _lastUpdated;
   Timer? _refreshTimer;
+  StreamSubscription? _ethioDataSubscription;
 
   // Constructor with dependency injection
   MarketProvider({
@@ -33,16 +33,61 @@ class MarketProvider with ChangeNotifier {
 
     // Set up periodic refresh timer (every 5 minutes)
     _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      fetchMarketData(useEthioData: true, useMockData: true);
+      fetchMarketData(useCache: true);
     });
 
-    // Start the EthioData market stream
+    // Start the EthioData market stream and listen to real-time updates
     EthioData.startMarketDataStream();
+    _subscribeToEthioMarketData();
+
+    // Immediately load market data on initialization
+    fetchMarketData();
+  }
+
+  void _subscribeToEthioMarketData() {
+    _ethioDataSubscription = EthioData.marketDataStream.listen((marketData) {
+      _logger.info(
+          'Received Ethiopian market data stream update with ${marketData.length} assets');
+      _updateEthiopianAssets(marketData);
+    });
+  }
+
+  void _updateEthiopianAssets(List<Map<String, dynamic>> marketData) {
+    try {
+      _ethiopianAssets = marketData
+          .map((data) => Asset(
+                name: data['name'] as String? ?? 'Unknown',
+                symbol: data['symbol'] as String? ?? 'UNKNOWN',
+                price: (data['price'] as num?)?.toDouble() ?? 0.0,
+                change: (data['change'] as num?)?.toDouble() ?? 0.0,
+                changePercent:
+                    (data['changePercent'] as num?)?.toDouble() ?? 0.0,
+                volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
+                sector: data['sector'] as String? ?? 'Unknown',
+                ownership: data['ownership'] as String? ?? 'Unknown',
+                marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
+                lastUpdated: DateTime.now(),
+                dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
+                dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
+                openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
+                lotSize: (data['lotSize'] as int?) ?? 1,
+                tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
+              ))
+          .toList();
+
+      _logger.info('Updated Ethiopian assets: ${_ethiopianAssets.length}');
+      _applyFavoritesToAssets();
+      _updateFavoriteAssets();
+      notifyListeners();
+    } catch (e) {
+      _logger.severe('Error updating Ethiopian assets: $e');
+    }
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _ethioDataSubscription?.cancel();
     EthioData.stopMarketDataStream();
     super.dispose();
   }
@@ -64,46 +109,46 @@ class MarketProvider with ChangeNotifier {
         : '';
   }
 
-  // Fetch market data with options to use different data sources
-  Future<void> fetchMarketData(
-      {bool useEthioData = true,
-      bool useMockData = true,
-      bool useCache = true}) async {
+  // Fetch market data with the right sources for each type
+  Future<void> fetchMarketData({bool useCache = true}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Fetch international market data from API
+      // For international markets, only use API (no mock data)
       _internationalAssets = await _apiService.fetchInternationalMarketData();
 
-      // For Ethiopian markets, try to get cached data first if useCache is true
-      _ethiopianAssets = [];
+      // For Ethiopian markets, use EthioData and explicitly generate mock data
+      try {
+        final ethiopianData = EthioData.generateMockEthioMarketData();
+        _ethiopianAssets = ethiopianData
+            .map((data) => Asset(
+                  name: data['name'] as String? ?? 'Unknown',
+                  symbol: data['symbol'] as String? ?? 'UNKNOWN',
+                  price: (data['price'] as num?)?.toDouble() ?? 0.0,
+                  change: (data['change'] as num?)?.toDouble() ?? 0.0,
+                  changePercent:
+                      (data['changePercent'] as num?)?.toDouble() ?? 0.0,
+                  volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
+                  sector: data['sector'] as String? ?? 'Unknown',
+                  ownership: data['ownership'] as String? ?? 'Unknown',
+                  marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
+                  lastUpdated: DateTime.now(),
+                  dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
+                  dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
+                  openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
+                  lotSize: (data['lotSize'] as int?) ?? 1,
+                  tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
+                ))
+            .toList();
 
-      if (useCache) {
-        final cachedEthiopianAssets =
-            await _apiService.getCachedEthiopianAssets();
-        if (cachedEthiopianAssets.isNotEmpty) {
-          _logger.info(
-              'Loaded ${cachedEthiopianAssets.length} Ethiopian assets from cache');
-          _ethiopianAssets = cachedEthiopianAssets;
-        }
+        _logger.info('Loaded ${_ethiopianAssets.length} Ethiopian assets');
+      } catch (e) {
+        _logger.severe('Error loading Ethiopian assets: $e');
       }
 
-      // If no cached data or cache not requested, generate fresh data
-      if (_ethiopianAssets.isEmpty && useEthioData) {
-        _logger.info('Generating fresh Ethiopian market data');
-        _ethiopianAssets = await _apiService.generateAndCacheEthiopianAssets();
-      }
-
-      // Fallback to mock data if needed
-      if (_ethiopianAssets.isEmpty && useMockData) {
-        _logger.info('Using mock data as fallback for Ethiopian assets');
-        final mockAssets = MockDataGenerator.generateMockAssets();
-        _ethiopianAssets.addAll(mockAssets);
-
-        // Cache the mock data for future use
-        await _apiService.saveEthiopianAssetsToCache(_ethiopianAssets);
-      }
+      _logger
+          .info('Loaded ${_internationalAssets.length} International assets');
 
       // Fetch chart data
       _chartData = await _apiService.getMarketChartData();
@@ -118,6 +163,41 @@ class MarketProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _logger.severe('Error fetching market data: $e');
+
+      // If we fail to fetch international data, at least ensure Ethiopian data is loaded
+      if (_ethiopianAssets.isEmpty) {
+        try {
+          final ethiopianData = EthioData.generateMockEthioMarketData();
+          _ethiopianAssets = ethiopianData
+              .map((data) => Asset(
+                    name: data['name'] as String? ?? 'Unknown',
+                    symbol: data['symbol'] as String? ?? 'UNKNOWN',
+                    price: (data['price'] as num?)?.toDouble() ?? 0.0,
+                    change: (data['change'] as num?)?.toDouble() ?? 0.0,
+                    changePercent:
+                        (data['changePercent'] as num?)?.toDouble() ?? 0.0,
+                    volume: (data['volume'] as num?)?.toDouble() ?? 0.0,
+                    sector: data['sector'] as String? ?? 'Unknown',
+                    ownership: data['ownership'] as String? ?? 'Unknown',
+                    marketCap: (data['marketCap'] as num?)?.toDouble() ?? 0.0,
+                    lastUpdated: DateTime.now(),
+                    dayHigh: (data['dayHigh'] as num?)?.toDouble() ?? 0.0,
+                    dayLow: (data['dayLow'] as num?)?.toDouble() ?? 0.0,
+                    openPrice: (data['openPrice'] as num?)?.toDouble() ?? 0.0,
+                    lotSize: (data['lotSize'] as int?) ?? 1,
+                    tickSize: (data['tickSize'] as num?)?.toDouble() ?? 0.05,
+                  ))
+              .toList();
+
+          _logger.info(
+              'Loaded ${_ethiopianAssets.length} Ethiopian assets after error');
+        } catch (ethioError) {
+          _logger.severe(
+              'Error loading Ethiopian assets after API failure: $ethioError');
+          _ethiopianAssets = []; // Ensure we have at least an empty list
+        }
+      }
+
       _isLoading = false;
       notifyListeners();
     }
@@ -161,8 +241,6 @@ class MarketProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _logger.warning('Error toggling favorite: $e');
-      // We don't rethrow here to prevent UI errors, but log the issue
-      // This allows the UI toggle to work even if Firebase fails
     }
   }
 
@@ -195,7 +273,6 @@ class MarketProvider with ChangeNotifier {
       }
     } catch (e) {
       _logger.warning('Error loading favorites: $e');
-      // Don't throw to avoid breaking the UI
     }
   }
 
@@ -232,14 +309,7 @@ class MarketProvider with ChangeNotifier {
 
   // Update market open/closed status
   void _updateMarketStatus() {
-    final now = DateTime.now();
-    final hour = now.hour;
-
-    // Ethiopian markets are open Monday-Friday, 9:00 AM to 3:00 PM
-    _isMarketOpen = now.weekday >= DateTime.monday &&
-        now.weekday <= DateTime.friday &&
-        hour >= 9 &&
-        hour < 15;
+    _isMarketOpen = EthiopianMarketHours.isMarketOpen();
   }
 
   // Statistics helpers

@@ -1,13 +1,13 @@
-import 'config/env.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 
 class FirebaseOptionsWeb {
-  static final Map<String, String> firebaseConfig = {
-    'apiKey': Env.firebaseApiKey,
-    'authDomain': 'ethio-tradding-app-9af0d.firebaseapp.com',
-    'projectId': 'ethio-tradding-app-9af0d',
-    'storageBucket': 'ethio-tradding-app-9af0d.firebasestorage.app',
-    'messagingSenderId': '1037800105398',
-    'appId': '1:1037800105398:web:477e073d91c9a8bf794d17',
-    'measurementId': 'G-GLFX8LEDJH',
-  };
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDk6ydogSjQ6hohlxF_jGmxubSDosQPH68',
+    authDomain: 'ethio-tradding-app-9af0d.firebaseapp.com',
+    projectId: 'ethio-tradding-app-9af0d',
+    storageBucket: 'ethio-tradding-app-9af0d.firebasestorage.app',
+    messagingSenderId: '1037800105398',
+    appId: '1:1037800105398:web:477e073d91c9a8bf794d17',
+    measurementId: 'G-GLFX8LEDJH',
+  );
 }

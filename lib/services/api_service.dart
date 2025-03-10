@@ -7,7 +7,6 @@ import '../models/asset.dart';
 import '../data/ethio_data.dart';
 import '../config/env.dart';
 import 'package:logging/logging.dart';
-import '../data/mock_data.dart';
 import 'market_data_service.dart';
 
 class ApiService {
@@ -23,141 +22,61 @@ class ApiService {
   })  : _database = database,
         _auth = auth;
 
-  // Fetch international market data using the market data service
+  // Fetch international market data using API ONLY
   Future<List<Asset>> fetchInternationalMarketData() async {
     _logger.info('Fetching international market data');
     List<Asset> assets = [];
 
     try {
-      // First check for cached data
+      // First try to get from cache
       final sharedPrefs = await SharedPreferences.getInstance();
       final cachedData = sharedPrefs.getString('cached_international_assets');
       final lastUpdate =
           sharedPrefs.getInt('international_last_update_time') ?? 0;
       final now = DateTime.now().millisecondsSinceEpoch;
 
-      // Use cached data if it's less than 5 minutes old
+      // If cache is valid (less than 5 minutes old), use it
       if (cachedData != null && now - lastUpdate < 300000) {
         _logger.info('Using cached international market data');
         final List<dynamic> decoded = json.decode(cachedData);
-        assets = decoded.map((item) => Asset.fromJson(item)).toList();
-        return assets;
+        return decoded.map((item) => Asset.fromJson(item)).toList();
       }
 
-      // If no valid cache, try to fetch from API with error handling for CORS
-      try {
-        // Use the proxy endpoint with proper headers
-        const url = '${Env.apiProxyUrl}/market/stocks';
-        final response = await http.get(
-          Uri.parse(url),
-          headers: {
-            'X-API-Key': Env.apiKey,
-            'Access-Control-Allow-Origin': '*',
-            'Accept': 'application/json',
-          },
-        ).timeout(const Duration(seconds: 10));
+      // Try API-only approach for international data
+      _logger
+          .info('Cache expired or not available, fetching fresh data from API');
+      final marketDataService = MarketDataService();
+      assets = await marketDataService.fetchInternationalStocks();
 
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          assets = (data['stocks'] as List)
-              .map((item) => Asset.fromJson(item))
-              .toList();
-
-          // Cache the fetched data
-          await sharedPrefs.setString('cached_international_assets',
-              json.encode(assets.map((a) => a.toJson()).toList()));
-          await sharedPrefs.setInt('international_last_update_time', now);
-
-          _logger.info(
-              'Successfully fetched ${assets.length} international stocks');
-        } else {
-          throw Exception(
-              'API request failed with status: ${response.statusCode}');
-        }
-      } catch (e) {
-        _logger.warning(
-            'API request failed: $e, falling back to market data service');
-        // If proxy fails, try direct market data service
-        final marketDataService = MarketDataService();
-        assets = await marketDataService.fetchInternationalStocks();
+      // Cache the fetched data if not empty
+      if (assets.isNotEmpty) {
+        await sharedPrefs.setString('cached_international_assets',
+            json.encode(assets.map((a) => a.toJson()).toList()));
+        await sharedPrefs.setInt('international_last_update_time', now);
+        _logger
+            .info('Successfully cached ${assets.length} international stocks');
+      } else {
+        _logger.warning('No international assets fetched from API');
       }
+
+      // Return whatever we have, even if empty - NO MOCK DATA
+      return assets;
     } catch (e) {
-      _logger.severe('Error in fetchInternationalMarketData: $e');
-      assets = _generateFallbackInternationalAssets();
+      _logger.severe('Error fetching international market data: $e');
+
+      // Last resort: try to use cache even if it's old
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final cachedData = sharedPrefs.getString('cached_international_assets');
+      if (cachedData != null) {
+        _logger.warning('Using outdated cache due to fetch errors');
+        final List<dynamic> decoded = json.decode(cachedData);
+        return decoded.map((item) => Asset.fromJson(item)).toList();
+      }
+
+      // If all else fails, return empty list - NO MOCK DATA FOR INTERNATIONAL
+      _logger.severe('No international market data available');
+      return [];
     }
-
-    return assets;
-  }
-
-  // Helper method to generate fallback international data
-  List<Asset> _generateFallbackInternationalAssets() {
-    _logger.info('Generating fallback international market data');
-    final stocks = [
-      {
-        'name': 'Apple Inc.',
-        'symbol': 'AAPL',
-        'price': 175.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
-        'change': 1.2,
-        'volume': 36500000,
-        'sector': 'Technology'
-      },
-      {
-        'name': 'Microsoft Corporation',
-        'symbol': 'MSFT',
-        'price': 350.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
-        'change': 0.8,
-        'volume': 22000000,
-        'sector': 'Technology'
-      },
-      {
-        'name': 'Amazon.com Inc.',
-        'symbol': 'AMZN',
-        'price': 140.0 + (DateTime.now().millisecondsSinceEpoch % 10) - 5,
-        'change': -0.5,
-        'volume': 28000000,
-        'sector': 'Consumer Cyclical'
-      },
-      {
-        'name': 'Tesla Inc.',
-        'symbol': 'TSLA',
-        'price': 220.0 + (DateTime.now().millisecondsSinceEpoch % 15) - 7,
-        'change': -1.3,
-        'volume': 95000000,
-        'sector': 'Automotive'
-      },
-      {
-        'name': 'Alphabet Inc.',
-        'symbol': 'GOOGL',
-        'price': 130.0 + (DateTime.now().millisecondsSinceEpoch % 8) - 4,
-        'change': 0.6,
-        'volume': 19000000,
-        'sector': 'Technology'
-      },
-    ];
-
-    return stocks
-        .map((item) => Asset(
-              name: item['name'] as String,
-              symbol: item['symbol'] as String,
-              price: item['price'] as double,
-              change: item['change'] as double,
-              changePercent:
-                  (item['change'] as double) * 100 / (item['price'] as double),
-              volume: item['volume'] as double,
-              sector: item['sector'] as String,
-              ownership: 'Public',
-              marketCap:
-                  (item['price'] as double) * (item['volume'] as double) * 10,
-              lastUpdated: DateTime.now(),
-              dayHigh: (item['price'] as double) +
-                  ((item['price'] as double) * 0.02),
-              dayLow: (item['price'] as double) -
-                  ((item['price'] as double) * 0.02),
-              openPrice: (item['price'] as double) - (item['change'] as double),
-              lotSize: 1,
-              tickSize: 0.01,
-            ))
-        .toList();
   }
 
   // Cache Ethiopian assets to shared preferences
@@ -265,7 +184,7 @@ class ApiService {
 
   // Generate Ethiopian assets using EthioData
   Future<List<Asset>> generateAndCacheEthiopianAssets() async {
-    _logger.info('Generating Ethiopian market data');
+    _logger.info('Generating Ethiopian market data from EthioData');
     try {
       final ethioMarketData = EthioData.generateMockEthioMarketData();
       final ethiopianAssets = ethioMarketData
@@ -349,46 +268,23 @@ class ApiService {
     return data;
   }
 
-  // Get Ethiopian assets from Firebase first, then cache
+  // Get Ethiopian assets - ONLY use EthioData
   Future<List<Asset>> fetchEthiopianAssets() async {
+    _logger.info('Fetching Ethiopian assets from EthioData');
     try {
-      _logger.info('Fetching Ethiopian assets from Firebase');
-      final snapshot = await _database.ref('marketData/ethiopian').get();
-
-      if (snapshot.exists) {
-        final data = snapshot.value as Map<dynamic, dynamic>;
-
-        // Skip metadata
-        data.remove('_metadata');
-
-        List<Asset> assets = [];
-        data.forEach((key, value) {
-          try {
-            assets.add(Asset.fromMap(Map<String, dynamic>.from(value)));
-          } catch (e) {
-            _logger.warning('Error parsing Ethiopian asset data: $e');
-          }
-        });
-
-        if (assets.isNotEmpty) {
-          // Update local cache
-          await saveEthiopianAssetsToCache(assets);
-          return assets;
-        }
-      }
-
-      // If no Firebase data, generate new
+      // Directly use EthioData to generate Ethiopian assets
       return await generateAndCacheEthiopianAssets();
     } catch (e) {
-      _logger.severe('Error fetching Ethiopian assets from Firebase: $e');
+      _logger.severe('Error fetching Ethiopian assets: $e');
 
-      // Fallback to cache or generate new
+      // Try to use cached data as fallback
       final cachedAssets = await getCachedEthiopianAssets();
       if (cachedAssets.isNotEmpty) {
         return cachedAssets;
       }
 
-      return await generateAndCacheEthiopianAssets();
+      // If all fails, return empty list
+      return [];
     }
   }
 
@@ -402,16 +298,32 @@ class ApiService {
         return data.cast<Map<String, dynamic>>();
       }
 
-      // Generate mock news if no data
-      final mockNews = MockDataGenerator.generateNewsForStock(symbol);
+      // If no data in Firebase, fetch from News API
+      final newsList = await fetchNews(category: 'business');
 
-      // Save to Firebase
-      await _database.ref('news/stocks/$symbol').set(mockNews);
+      // Filter for the specific stock
+      final stockNews = newsList
+          .where((news) =>
+              news['headline']
+                  .toString()
+                  .toLowerCase()
+                  .contains(symbol.toLowerCase()) ||
+              news['content']
+                  .toString()
+                  .toLowerCase()
+                  .contains(symbol.toLowerCase()))
+          .toList();
 
-      return mockNews;
+      if (stockNews.isNotEmpty) {
+        // Save to Firebase
+        await _database.ref('news/stocks/$symbol').set(stockNews);
+        return stockNews;
+      }
+
+      return [];
     } catch (e) {
       _logger.severe('Error fetching news for $symbol: $e');
-      return MockDataGenerator.generateNewsForStock(symbol);
+      return [];
     }
   }
 

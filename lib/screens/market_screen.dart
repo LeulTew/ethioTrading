@@ -57,11 +57,9 @@ class _MarketScreenState extends State<MarketScreen>
     setState(() => _isLoading = true);
 
     try {
-      // Explicitly use both ethio_data and mock_data for Ethiopian markets
-      await marketProvider.fetchMarketData(
-          useEthioData: true, useMockData: true);
+      // Fetch market data using only API for international and EthioData for Ethiopian
+      await marketProvider.fetchMarketData();
     } catch (e) {
-      // Handle error
       debugPrint('Error fetching market data: $e');
     }
 

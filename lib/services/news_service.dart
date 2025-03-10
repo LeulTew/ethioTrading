@@ -440,4 +440,44 @@ class NewsService {
     final mockNewsService = MockNewsService();
     return mockNewsService.searchNews(query);
   }
+
+  static const String _apiKey = '2b0e0c4bfcaa41fb8c6cb8e790a1d4da';
+  static const String _baseUrl = 'https://newsapi.org/v2';
+
+  Future<List<NewsArticle>> getFinancialNews() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/everything?q=ethiopian+finance+market&sortBy=publishedAt&language=en&apiKey=$_apiKey'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final articles = data['articles'] as List;
+        return articles
+            .map((article) => NewsArticle.fromJson(article))
+            .toList();
+      } else {
+        throw Exception('Failed to load news');
+      }
+    } catch (e) {
+      // Fallback to mock data in case of error or API limit reached
+      return _getMockNews();
+    }
+  }
+
+  List<NewsArticle> _getMockNews() {
+    return [
+      NewsArticle(
+        title: 'Ethiopian Market Shows Strong Growth',
+        description:
+            'The Ethiopian market demonstrated remarkable resilience...',
+        url: 'https://example.com/news/1',
+        imageUrl: 'https://example.com/images/1.jpg',
+        publishedAt: DateTime.now().subtract(const Duration(hours: 2)),
+        source: 'Ethiopian Financial News',
+      ),
+      // Add more mock articles as needed
+    ];
+  }
 }

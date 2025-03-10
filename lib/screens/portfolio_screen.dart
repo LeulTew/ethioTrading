@@ -3,11 +3,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
-import '../data/mock_data.dart';
 import '../providers/language_provider.dart';
-// Removed unused import: '../providers/portfolio_provider.dart'
 import '../providers/auth_provider.dart';
-import '../models/asset.dart';
+import '../providers/portfolio_provider.dart';
+import '../providers/market_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -19,21 +18,13 @@ class PortfolioScreen extends StatefulWidget {
 class _PortfolioScreenState extends State<PortfolioScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<Map<String, dynamic>> _holdings = [];
-  final List<Map<String, dynamic>> _transactions = [];
-  List<Asset> _purchasedAssets = [];
-  double _totalValue = 0;
-  double _todayGain = 0;
-  double _totalGain = 0;
   bool _isLoading = true;
-// 0: 1D, 1: 1W, 2: 1M, 3: 3M, 4: 1Y, 5: ALL
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _generateMockPortfolioData();
-    _loadPurchasedAssets();
+    _loadPortfolioData();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<LanguageProvider>(context, listen: false)
@@ -41,38 +32,44 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     });
   }
 
-  void _generateMockPortfolioData() {
-    final portfolioData = MockPortfolio.generateMockPortfolioData();
-    setState(() {
-      _holdings
-          .addAll(List<Map<String, dynamic>>.from(portfolioData['holdings']));
-      _transactions.addAll(
-          List<Map<String, dynamic>>.from(portfolioData['transactions']));
-      _totalValue = portfolioData['totalValue'];
-      _todayGain = portfolioData['todayGain'];
-      _totalGain = portfolioData['totalGain'];
-    });
-  }
-
-  Future<void> _loadPurchasedAssets() async {
+  Future<void> _loadPortfolioData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.isAuthenticated) {
-      try {
-        // In a real app, fetch the purchased assets from the portfolio provider
-        // For now, we'll just set _isLoading to false
-        // final portfolioProvider = Provider.of<PortfolioProvider>(context, listen: false);
-        // _purchasedAssets = await portfolioProvider.getPurchasedAssets();
+    final portfolioProvider =
+        Provider.of<PortfolioProvider>(context, listen: false);
+    final marketProvider = Provider.of<MarketProvider>(context, listen: false);
 
-        // Simulate loading purchased assets
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        // Mock purchased assets - this would come from the portfolio provider in a real app
-        _purchasedAssets = [];
-      } catch (e) {
-        debugPrint('Error loading purchased assets: $e');
-      }
+    if (!authProvider.isAuthenticated) {
+      // Check mounted here before setting state
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to view your portfolio')),
+      );
+      return;
     }
 
+    setState(() => _isLoading = true);
+
+    try {
+      // Create a map of assets for quick lookup
+      final allAssets = [
+        ...marketProvider.ethiopianAssets,
+        ...marketProvider.internationalAssets
+      ];
+      final marketAssets = {for (var asset in allAssets) asset.symbol: asset};
+
+      // Load portfolio data
+      await portfolioProvider.fetchPortfolio(marketAssets: marketAssets);
+    } catch (e) {
+      // Check mounted before showing SnackBar
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+
+    // Check mounted again before setting state
+    if (!mounted) return;
     setState(() => _isLoading = false);
   }
 
@@ -82,6 +79,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     final currencyFormatter =
         NumberFormat.currency(locale: 'am_ET', symbol: 'ETB', decimalDigits: 2);
     final lang = Provider.of<LanguageProvider>(context);
+    final portfolioProvider = Provider.of<PortfolioProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -99,7 +97,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
             icon: Icon(Icons.sync, color: theme.colorScheme.primary),
             onPressed: () {
               setState(() => _isLoading = true);
-              _loadPurchasedAssets();
+              _loadPortfolioData();
             },
             tooltip: lang.translate('refresh'),
           ),
@@ -151,7 +149,8 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          currencyFormatter.format(_totalValue),
+                                          currencyFormatter.format(
+                                              portfolioProvider.totalValue),
                                           style: GoogleFonts.spaceGrotesk(
                                             fontSize: 32,
                                             fontWeight: FontWeight.bold,
@@ -164,15 +163,15 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                                           children: [
                                             _buildGainLossWidget(
                                               lang.translate('today'),
-                                              _todayGain,
-                                              _todayGain >= 0,
+                                              portfolioProvider.todayGain,
+                                              portfolioProvider.todayGain >= 0,
                                               theme,
                                               currencyFormatter,
                                             ),
                                             _buildGainLossWidget(
                                               lang.translate('total'),
-                                              _totalGain,
-                                              _totalGain >= 0,
+                                              portfolioProvider.totalGain,
+                                              portfolioProvider.totalGain >= 0,
                                               theme,
                                               currencyFormatter,
                                             ),
@@ -184,20 +183,25 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              _buildPortfolioChart(theme, lang),
+                              _buildPortfolioChart(
+                                  theme, lang, portfolioProvider),
                               const SizedBox(height: 24),
-                              _buildDistributionChart(theme, lang),
-                              if (_purchasedAssets.isNotEmpty) ...[
+                              _buildDistributionChart(
+                                  theme, lang, portfolioProvider),
+                              if (portfolioProvider
+                                  .purchasedAssets.isNotEmpty) ...[
                                 const SizedBox(height: 24),
-                                _buildPurchasedAssetsSection(
-                                    theme, currencyFormatter, lang),
+                                _buildPurchasedAssetsSection(theme,
+                                    currencyFormatter, lang, portfolioProvider),
                               ],
                             ],
                           ),
                         ),
                       ),
-                _buildHoldingsTab(theme, currencyFormatter, lang),
-                _buildTransactionsTab(theme, currencyFormatter, lang),
+                _buildHoldingsTab(
+                    theme, currencyFormatter, lang, portfolioProvider),
+                _buildTransactionsTab(
+                    theme, currencyFormatter, lang, portfolioProvider),
               ],
             ),
           ),
@@ -234,7 +238,6 @@ class _PortfolioScreenState extends State<PortfolioScreen>
       ),
     );
   }
-
 
   void _showOptionsMenu(BuildContext context, LanguageProvider lang) {
     final theme = Theme.of(context);
@@ -307,7 +310,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
           ],
         ),
         Text(
-          '${isPositive ? '+' : '-'}${(value.abs() / _totalValue * 100).toStringAsFixed(2)}%',
+          '${isPositive ? '+' : '-'}${(value.abs() / value * 100).toStringAsFixed(2)}%',
           style: GoogleFonts.spaceGrotesk(
             fontSize: 12,
             color: isPositive ? Colors.greenAccent : Colors.redAccent,
@@ -317,12 +320,14 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildPortfolioChart(ThemeData theme, LanguageProvider lang) {
+  Widget _buildPortfolioChart(ThemeData theme, LanguageProvider lang,
+      PortfolioProvider portfolioProvider) {
     final spots = List<FlSpot>.generate(
       30,
       (index) => FlSpot(
         index.toDouble(),
-        _totalValue * (1 + (index / 100) * (0.5 + math.Random().nextDouble())),
+        portfolioProvider.totalValue *
+            (1 + (index / 100) * (0.5 + math.Random().nextDouble())),
       ),
     );
 
@@ -400,12 +405,13 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildDistributionChart(ThemeData theme, LanguageProvider lang) {
+  Widget _buildDistributionChart(ThemeData theme, LanguageProvider lang,
+      PortfolioProvider portfolioProvider) {
     final sectors = <String, double>{};
-    for (final holding in _holdings) {
-      final asset = holding['asset'];
+    for (final holding in portfolioProvider.holdings) {
+      final asset = holding.asset;
       final sector = asset.sector;
-      sectors[sector] = (sectors[sector] ?? 0) + holding['value'];
+      sectors[sector] = (sectors[sector] ?? 0) + holding.value;
     }
     final total = sectors.values.fold(0.0, (sum, value) => sum + value);
     final sectorPercentages = sectors.map(
@@ -504,7 +510,10 @@ class _PortfolioScreenState extends State<PortfolioScreen>
   }
 
   Widget _buildPurchasedAssetsSection(
-      ThemeData theme, NumberFormat currencyFormatter, LanguageProvider lang) {
+      ThemeData theme,
+      NumberFormat currencyFormatter,
+      LanguageProvider lang,
+      PortfolioProvider portfolioProvider) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -521,7 +530,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
               ),
             ),
             const SizedBox(height: 16),
-            if (_purchasedAssets.isEmpty)
+            if (portfolioProvider.purchasedAssets.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24.0),
                 child: Center(
@@ -538,9 +547,9 @@ class _PortfolioScreenState extends State<PortfolioScreen>
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _purchasedAssets.length,
+                itemCount: portfolioProvider.purchasedAssets.length,
                 itemBuilder: (context, index) {
-                  final asset = _purchasedAssets[index];
+                  final asset = portfolioProvider.purchasedAssets[index];
                   // In a real app you would get these values from the portfolio data
                   final price = asset.price;
                   const quantity = 10; // Mock value
@@ -590,9 +599,9 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildHoldingsTab(
-      ThemeData theme, NumberFormat currencyFormatter, LanguageProvider lang) {
-    if (_holdings.isEmpty) {
+  Widget _buildHoldingsTab(ThemeData theme, NumberFormat currencyFormatter,
+      LanguageProvider lang, PortfolioProvider portfolioProvider) {
+    if (portfolioProvider.holdings.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -620,14 +629,14 @@ class _PortfolioScreenState extends State<PortfolioScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _holdings.length,
+      itemCount: portfolioProvider.holdings.length,
       itemBuilder: (context, index) {
-        final holding = _holdings[index];
-        final asset = holding['asset'];
-        final value = holding['value'];
-        final gain = holding['gain'];
+        final holding = portfolioProvider.holdings[index];
+        final asset = holding.asset;
+        final value = holding.value;
+        final gain = holding.gain;
         final isPositive = gain >= 0;
-        final quantity = holding['quantity'];
+        final quantity = holding.quantity;
 
         return Card(
           elevation: 2,
@@ -729,9 +738,9 @@ class _PortfolioScreenState extends State<PortfolioScreen>
     );
   }
 
-  Widget _buildTransactionsTab(
-      ThemeData theme, NumberFormat currencyFormatter, LanguageProvider lang) {
-    if (_transactions.isEmpty) {
+  Widget _buildTransactionsTab(ThemeData theme, NumberFormat currencyFormatter,
+      LanguageProvider lang, PortfolioProvider portfolioProvider) {
+    if (portfolioProvider.transactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -759,13 +768,13 @@ class _PortfolioScreenState extends State<PortfolioScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _transactions.length,
+      itemCount: portfolioProvider.transactions.length,
       itemBuilder: (context, index) {
-        final transaction = _transactions[index];
-        final asset = transaction['asset'];
-        final isBuy = transaction['type'] == 'buy';
-        final amount = transaction['price'] * transaction['quantity'];
-        final date = transaction['timestamp'];
+        final transaction = portfolioProvider.transactions[index];
+        final asset = transaction.asset;
+        final isBuy = transaction.type == 'buy';
+        final amount = transaction.price * transaction.quantity;
+        final date = transaction.timestamp;
 
         return Card(
           elevation: 1,
@@ -817,7 +826,7 @@ class _PortfolioScreenState extends State<PortfolioScreen>
                       ),
                     ),
                     Text(
-                      '${transaction['quantity']} ${lang.translate('shares')} @ ${currencyFormatter.format(transaction['price'])}',
+                      '${transaction.quantity} ${lang.translate('shares')} @ ${currencyFormatter.format(transaction.price)}',
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 12,
                         color: theme.colorScheme.onSurface

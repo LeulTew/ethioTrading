@@ -101,6 +101,38 @@ class PortfolioSummary {
   });
 }
 
+class PortfolioHolding {
+  final Asset asset;
+  final double quantity;
+  final double value;
+  final double gain;
+  final double gainPercent;
+
+  PortfolioHolding({
+    required this.asset,
+    required this.quantity,
+    required this.value,
+    required this.gain,
+    required this.gainPercent,
+  });
+}
+
+class Transaction {
+  final Asset asset;
+  final String type; // 'buy' or 'sell'
+  final double quantity;
+  final double price;
+  final DateTime timestamp;
+
+  Transaction({
+    required this.asset,
+    required this.type,
+    required this.quantity,
+    required this.price,
+    required this.timestamp,
+  });
+}
+
 class PortfolioProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -110,11 +142,25 @@ class PortfolioProvider with ChangeNotifier {
   bool _isLoading = false;
   String _error = '';
 
+  List<PortfolioHolding> _holdings = [];
+  List<Asset> _purchasedAssets = [];
+  List<Transaction> _transactions = [];
+  double _totalValue = 0;
+  double _todayGain = 0;
+  double _totalGain = 0;
+
   // Getters
   List<PortfolioItem> get portfolioItems => _portfolioItems;
   double get cashBalance => _cashBalance;
   bool get isLoading => _isLoading;
   String get error => _error;
+
+  List<PortfolioHolding> get holdings => _holdings;
+  List<Asset> get purchasedAssets => _purchasedAssets;
+  List<Transaction> get transactions => _transactions;
+  double get totalValue => _totalValue;
+  double get todayGain => _todayGain;
+  double get totalGain => _totalGain;
 
   // Initialize portfolio data
   Future<void> fetchPortfolio(
@@ -143,7 +189,7 @@ class PortfolioProvider with ChangeNotifier {
 
       final userData = docSnapshot.data()!;
 
-      // Get cash balance
+      // Get cash balance with explicit conversion to double
       _cashBalance = (userData['balance'] as num?)?.toDouble() ?? 0.0;
 
       // Get portfolio items
@@ -154,6 +200,62 @@ class PortfolioProvider with ChangeNotifier {
         final asset = marketAssets[symbol];
         return PortfolioItem.fromMap(item, asset!);
       }).toList();
+
+      final transactions =
+          List<Map<String, dynamic>>.from(userData['transactions'] ?? []);
+
+      // Process portfolio holdings
+      _holdings = [];
+      _purchasedAssets = [];
+      _totalValue = 0;
+      _todayGain = 0;
+      _totalGain = 0;
+
+      for (final item in portfolio) {
+        final symbol = item['symbol'] as String;
+        final asset = marketAssets[symbol];
+        if (asset != null) {
+          // Explicit conversion of num to double
+          final quantity = (item['quantity'] as num).toDouble();
+          final avgPrice = (item['avgPrice'] as num).toDouble();
+          final value = quantity * asset.price;
+          final gain = value - (quantity * avgPrice);
+          final gainPercent =
+              avgPrice > 0 ? (gain / (quantity * avgPrice)) * 100 : 0.0;
+
+          _holdings.add(PortfolioHolding(
+            asset: asset,
+            quantity: quantity,
+            value: value,
+            gain: gain,
+            gainPercent: gainPercent,
+          ));
+
+          _purchasedAssets.add(asset);
+          _totalValue += value;
+          _todayGain +=
+              quantity * (asset.price - (asset.openPrice ?? asset.price));
+          _totalGain += gain;
+        }
+      }
+
+      // Process transactions with explicit double conversions
+      _transactions = transactions.map((t) {
+        final symbol = t['symbol'] as String;
+        final asset = marketAssets[symbol];
+        if (asset == null) throw Exception('Asset not found: $symbol');
+
+        return Transaction(
+          asset: asset,
+          type: t['type'] as String,
+          quantity: (t['quantity'] as num).toDouble(),
+          price: (t['price'] as num).toDouble(),
+          timestamp: (t['timestamp'] as Timestamp).toDate(),
+        );
+      }).toList();
+
+      // Sort transactions by date
+      _transactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       _isLoading = false;
       notifyListeners();
@@ -186,6 +288,20 @@ class PortfolioProvider with ChangeNotifier {
       }
     }
 
+    notifyListeners();
+  }
+
+  // Update holdings with latest market prices
+  void updateWithMarketPrices(Map<String, Asset> marketAssets) {
+    for (final holding in _holdings) {
+      final asset = marketAssets[holding.asset.symbol];
+      if (asset != null) {
+        final newValue = holding.quantity * asset.price;
+        _todayGain +=
+            holding.quantity * (asset.price - (asset.openPrice ?? asset.price));
+        _totalValue = _totalValue - holding.value + newValue;
+      }
+    }
     notifyListeners();
   }
 
@@ -269,5 +385,15 @@ class PortfolioProvider with ChangeNotifier {
     });
 
     return sortedList;
+  }
+
+  // Helper method to calculate sector distribution
+  Map<String, double> getSectorDistribution() {
+    final sectors = <String, double>{};
+    for (final holding in _holdings) {
+      final sector = holding.asset.sector;
+      sectors[sector] = (sectors[sector] ?? 0) + holding.value;
+    }
+    return sectors;
   }
 }
