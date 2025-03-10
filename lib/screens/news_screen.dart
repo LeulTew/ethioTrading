@@ -3,12 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart'; // Added for URL launching
+import 'package:url_launcher/url_launcher.dart';
 import '../models/news_article.dart';
 import '../providers/language_provider.dart';
 import '../services/news_service.dart';
 import '../providers/news_provider.dart';
 import '../config/env.dart';
+import '../widgets/custom_bottom_nav.dart'; // Import the custom nav bar
 import 'dart:async';
 
 class NewsScreen extends StatefulWidget {
@@ -210,28 +211,11 @@ class _NewsScreenState extends State<NewsScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+        // Replace standard BottomNavigationBar with our CustomBottomNavBar
         bottomNavigationBar: widget.stockSymbol == null
-            ? BottomNavigationBar(
-                currentIndex: 0,
-                type: BottomNavigationBarType.fixed,
-                items: [
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.home),
-                    label: lang.translate('home'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.show_chart),
-                    label: lang.translate('market'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.account_balance_wallet),
-                    label: lang.translate('portfolio'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.person),
-                    label: lang.translate('profile'),
-                  ),
-                ],
+            ? CustomBottomNavBar(
+                currentIndex:
+                    0, // News is shown from different places, default to home
                 onTap: (index) {
                   final routes = ['/home', '/market', '/portfolio', '/profile'];
                   Navigator.pushReplacementNamed(context, routes[index]);
